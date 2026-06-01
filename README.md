@@ -1,5 +1,4 @@
 <p align="center">
-  <img width="350" height="350" alt="Area Logo" src="https://github.com/user-attachments/assets/2b07a52a-a6c4-4bab-9a24-403ff0c7249b" />
   <h1 align="center">Area</h1>
   <p align="center"><strong>State-of-the-art AI geolocation from a single image.</strong></p>
   <p align="center"><em>Upload a photo. Get exact GPS coordinates. No metadata required.</em></p>
@@ -8,17 +7,8 @@
     <a href="#how-it-works">How It Works</a> •
     <a href="#benchmarks--performance">Benchmarks</a> •
     <a href="#getting-started">Getting Started</a> •
-    <a href="#community-hub">Community Hub</a> •
-    <a href="#installation">Installation</a>
-  </p>
-  <p align="center">
-    <a href="https://t.me/qynon"><img src="https://img.shields.io/badge/Telegram-qynon-0088cc?logo=telegram&logoColor=white" alt="Telegram"></a>
-    <img src="https://img.shields.io/badge/Area Model-CVPR%202025-blue" alt="Area Model">
-    <img src="https://img.shields.io/badge/MASt3R-ECCV%202024-green" alt="MASt3R">
-    <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
-    <img src="https://img.shields.io/badge/Python-3.10%2B-orange" alt="Python">
-    <img src="https://img.shields.io/badge/Platform-macOS%20|%20Linux%20|%20Windows-lightgrey" alt="Platform">
-    <img src="https://img.shields.io/badge/GPU-CUDA%20|%20MPS%20|%20CPU-red" alt="GPU">
+    <a href="#installation">Installation</a> •
+    <a href="https://t.me/qynon">Telegram</a>
   </p>
 </p>
 
@@ -330,7 +320,7 @@ Area threw all of that away:
 | **Retrieval model parameters** | ~23M (ResNet-50) | ~86M (DINOv2 ViT-B/14) |
 | **Matching approach** | Sparse keypoints (~500-2K points) | Dense correspondences (~10K+ points) |
 | **Partial image matching** | Weak — sparse keypoints fail on small overlaps | Strong — MASt3R finds dense correspondences in tiny regions |
-| **Sharing indexes** | Not possible | Community Hub via Hugging Face + offline `.area` bundles |
+| **Sharing indexes** | Not possible | Hugging Face upload/download + offline `.area` bundles |
 
 The simplification isn't just aesthetic. Fewer stages means fewer places for things to go wrong, faster searches, and code that's actually maintainable.
 
@@ -435,15 +425,7 @@ A small cropped picture of a building, that's all it took to find its location i
 
 ## Getting Started
 
-### Option A: Download an existing index and start searching
-
-The fastest way. Someone else already did the indexing work — you just download their pre-built index.
-
-<img width="706" height="575" alt="Community Hub" src="https://github.com/user-attachments/assets/62881017-733e-42d3-acd8-26d98826914c" />
-
-Set mode to **Search**, click **Run Search**, and select your query image. The map coordinates and search radius auto-populate from the index metadata. This feature only works if the community contributes and supports each other — if you index a region, we will all be grateful if you upload it.
-
-### Option B: Build your own index from scratch
+### Option A: Build your own index from scratch
 
 > **⚠️ NOTE:** If the application freezes due to running out of memory while fitting PCA, use this command:
 > ```bash
@@ -473,23 +455,15 @@ python test_super.py
 | PCA fitting | Fit PCA on subsample of 100K descriptors (8448 → 1024 dims) | ~1 min |
 | Index building | Apply PCA, normalize, save compact index + metadata | ~2 min |
 
-### Option C: Import an index file from someone
+### Option B: Import an index file from someone
 
 Got a `.area` file from a friend, a Discord server, or a download link? Just click **📥 Import Index** in the app, select the file, and you're ready to search. No account needed, no internet needed — it's a fully offline workflow.
 
 ---
 
-## Community Hub
+## Index Sharing & the .area format
 
-This is the part we're most excited about.
-
-Indexing a city takes hours of compute time. It's wasteful for every user to independently index the same city. So we built a sharing system: one person indexes Moscow, uploads the result, and everyone else downloads it in minutes.
-
-### How it works
-
-Indexes are hosted on [Hugging Face Hub](https://huggingface.co) as public datasets. Anyone can download without an account. Contributing (uploading) requires a free Hugging Face account.
-
-**From the GUI:** Click the **🌐 Community Hub** button to browse, search, and download available indexes. Click **⬆ Upload Current Index** to share yours.
+Since indexing a city takes compute time, Area supports sharing pre-built index files with others so that they can download and import them directly.
 
 ### The .area format
 
@@ -577,7 +551,7 @@ some_folder/
 │   ├── area_utils.py       # Area Model model loading, descriptors, PCA
 │   ├── area_mode.py        # Self-contained Area Model architecture (fallback)
 │   ├── mast3r_utils.py        # MASt3R loading and dense matching
-│   ├── area_hub.py          # Community Hub — upload, download, export, import
+│   ├── area_hub.py          # Index sharing — upload, download, export, import
 │   ├── requirements.txt       # Python dependencies
 │   ├── setup.bat / setup.sh   # One-click setup scripts
 │   ├── run.bat                # Windows launcher
@@ -594,7 +568,7 @@ some_folder/
         ├── area_descriptors.npy   # PCA-reduced descriptors (float32)
         ├── metadata.npz              # Coordinates, headings, panoid IDs
         ├── area_pca.pkl           # PCA model for query-time transformation
-        └── manifest.json             # Present if downloaded from Community Hub
+        └── manifest.json             # Present if downloaded or imported
 ```
 
 `mast3r_utils.py` automatically finds and imports the adjacent `mast3r/` directory at runtime. No path configuration needed.
@@ -696,11 +670,11 @@ We believe in being upfront about what this tool can and can't do.
 
 | Limitation | Explanation | Mitigation |
 |---|---|---|
-| **Index-dependent** | Only finds places that are in the index | Use Community Hub to expand coverage |
+| **Index-dependent** | Only finds places that are in the index | Share and download indexes from Hugging Face |
 | **Repetitive architecture** | Chain stores, identical apartment blocks cause false positives | Spatial consensus filters isolated outliers |
 | **Coverage gaps** | Rural areas, developing countries, indoor spaces may lack imagery | Focus on urban areas with good Street View coverage |
 | **Not real-time** | MASt3R on 500 candidates takes several minutes | Designed for forensic/investigative use, not navigation |
-| **Compute-intensive indexing** | 1km = ~20 min, 10km = overnight | Community Hub shares the cost |
+| **Compute-intensive indexing** | 1km = ~20 min, 10km = overnight | Share pre-built indexes to save compute time |
 | **Match confidence** | Highest inlier count ≠ always correct | Returns top 10 results for manual cross-checking |
 
 ---
@@ -749,7 +723,7 @@ MIT License. See [LICENSE](LICENSE) for details.
 | Area Model weights | MIT |
 | MASt3R | Apache 2.0 |
 | DINOv2 | Apache 2.0 |
-| Community-shared indexes | CC-BY-4.0 |
+| Shared indexes | CC-BY-4.0 |
 
 ---
 
