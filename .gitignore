@@ -1,0 +1,19 @@
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+venv/
+.env
+.venv
+env/
+ENV/
+
+# Runtime index data
+area_data/
+netryx_data/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
