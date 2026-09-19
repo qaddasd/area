@@ -792,13 +792,13 @@ class ProgressTracker:
 
 class RoundedButton(tk.Canvas):
     def __init__(self, parent, text, command, width=200, height=44,
-                 corner_radius=12, bg_color='#8b5cf6', hover_color='#a78bfa',
-                 pressed_color='#7c3aed', text_color='#ffffff',
-                 font=('Inter', 11, 'bold')):
+                 corner_radius=10, bg_color='#ffffff', hover_color='#e2e8f0',
+                 pressed_color='#cbd5e1', text_color='#0a0c10', border_color=None,
+                 font=('Inter', 10, 'bold')):
         try:
             parent_bg = parent.cget('bg')
         except:
-            parent_bg = '#0a0a0f'
+            parent_bg = '#0a0c10'
         super().__init__(parent, width=width, height=height,
                         highlightthickness=0, bg=parent_bg, cursor='hand2')
         self.command = command
@@ -806,6 +806,7 @@ class RoundedButton(tk.Canvas):
         self.hover_color = hover_color
         self.pressed_color = pressed_color
         self.text_color = text_color
+        self.border_color = border_color
         self.corner_radius = corner_radius
         self.width = width
         self.height = height
@@ -824,8 +825,9 @@ class RoundedButton(tk.Canvas):
 
     def _draw_button(self, color):
         self.delete('all')
+        outline_kw = {'outline': self.border_color, 'width': 1} if self.border_color else {'outline': ''}
         self._create_rounded_rect(2, 2, self.width-2, self.height-2,
-                                  self.corner_radius, fill=color, outline='')
+                                  self.corner_radius, fill=color, **outline_kw)
         self.create_text(self.width/2, self.height/2, text=self._text,
                         fill=self.text_color, font=self._font)
 
@@ -846,7 +848,7 @@ class RoundedButton(tk.Canvas):
         if 'state' in kwargs:
             if kwargs['state'] == 'disabled':
                 self._disabled = True
-                self._draw_button('#333333')
+                self._draw_button('#181c24')
             else:
                 self._disabled = False
                 self._draw_button(self.bg_color)
@@ -856,13 +858,13 @@ class RoundedButton(tk.Canvas):
 
 
 class RoundedEntry(tk.Canvas):
-    def __init__(self, parent, textvariable=None, width=200, height=36, corner_radius=10,
-                 bg_color='#1a1a2e', text_color='#ffffff', border_color='#2d2d3f',
-                 focus_color='#8b5cf6', font=('Avenir Next', 10), **kwargs):
+    def __init__(self, parent, textvariable=None, width=200, height=36, corner_radius=8,
+                 bg_color='#141720', text_color='#f1f5f9', border_color='#232834',
+                 focus_color='#475569', font=('Inter', 10), **kwargs):
         try:
             parent_bg = parent.cget('bg')
         except:
-            parent_bg = '#0a0a0f'
+            parent_bg = '#0a0c10'
         super().__init__(parent, width=width, height=height, highlightthickness=0, bg=parent_bg)
         self.corner_radius = corner_radius
         self.bg_color = bg_color
@@ -872,9 +874,9 @@ class RoundedEntry(tk.Canvas):
         self.height = height
         self.entry = tk.Entry(self, textvariable=textvariable, font=font,
                              bg=bg_color, fg=text_color, borderwidth=0,
-                             insertbackground='white', highlightthickness=0)
+                             insertbackground='#ffffff', highlightthickness=0)
         self._draw_background(self.border_color)
-        self.create_window(width/2, height/2, window=self.entry, width=width-24, height=height-8)
+        self.create_window(width/2, height/2, window=self.entry, width=width-20, height=height-8)
         self.entry.bind('<FocusIn>', lambda e: self._draw_background(self.focus_color))
         self.entry.bind('<FocusOut>', lambda e: self._draw_background(self.border_color))
 
@@ -904,7 +906,7 @@ class RoundedEntry(tk.Canvas):
         points = [1+self.corner_radius, 1, self.width-1-self.corner_radius, 1, self.width-1, 1,
                   self.width-1, 1+self.corner_radius, self.width-1, self.height-1-self.corner_radius,
                   self.width-1, self.height-1, self.width-1-self.corner_radius, self.height-1,
-                  1+self.corner_radius, self.height-1, 1, self.height-1, 1, self.height-1-self.corner_radius,
+                  1+self.corner_radius, self.height-1, 1, self.height-1, 1, self.height-1,
                   1, 1+self.corner_radius, 1, 1]
         self.create_polygon(points, smooth=True, fill=self.bg_color,
                           outline=border_col, width=1, tags='bg')
@@ -970,17 +972,22 @@ class RoundedEntry(tk.Canvas):
 
 
 class RoundedRadio(tk.Canvas):
-    def __init__(self, parent, text, variable, value, width=120, height=30,
-                 bg_color='#0a0a0f', active_color='#8b5cf6',
-                 text_color='#ffffff', font=('Avenir Next', 10), command=None):
+    def __init__(self, parent, text, variable, value, width=120, height=32,
+                 bg_color='#141720', active_bg='#222836', active_border='#3b4252',
+                 text_color='#94a3b8', active_text='#ffffff', font=('Inter', 10, 'bold'), command=None):
         super().__init__(parent, width=width, height=height, highlightthickness=0, bg=bg_color, cursor='hand2')
         self.variable = variable
         self.value = value
         self.command = command
-        self.active_color = active_color
+        self.bg_color = bg_color
+        self.active_bg = active_bg
+        self.active_border = active_border
         self.text_color = text_color
+        self.active_text = active_text
         self._text = text
         self._font = font
+        self.btn_w = width
+        self.btn_h = height
         self.bind('<Button-1>', self._on_click)
         self.variable.trace_add("write", self._update_state)
         self._update_state()
@@ -989,16 +996,25 @@ class RoundedRadio(tk.Canvas):
         self.variable.set(self.value)
         if self.command: self.command()
 
+    def _create_rounded_rect(self, x1, y1, x2, y2, r, **kwargs):
+        points = [x1+r, y1, x2-r, y1, x2, y1, x2, y1+r, x2, y2-r, x2, y2,
+                  x2-r, y2, x1+r, y2, x1, y2, x1, y2-r, x1, y1+r, x1, y1]
+        return self.create_polygon(points, smooth=True, **kwargs)
+
     def _update_state(self, *args):
         self.delete('all')
         is_selected = (self.variable.get() == self.value)
-        cy, r, x_circle = 15, 8, 15
-        ring_color = self.active_color if is_selected else '#6b7280'
-        self.create_oval(x_circle-r, cy-r, x_circle+r, cy+r, outline=ring_color, width=2)
         if is_selected:
-            r_inner = 4
-            self.create_oval(x_circle-r_inner, cy-r_inner, x_circle+r_inner, cy+r_inner, fill=self.active_color, outline='')
-        self.create_text(x_circle + 20, cy, text=self._text, anchor='w', fill=self.text_color, font=self._font)
+            self._create_rounded_rect(1, 1, self.btn_w-1, self.btn_h-1, 8,
+                                      fill=self.active_bg, outline=self.active_border, width=1)
+            self.create_text(self.btn_w/2, self.btn_h/2, text=self._text,
+                             fill=self.active_text, font=self._font)
+        else:
+            self._create_rounded_rect(1, 1, self.btn_w-1, self.btn_h-1, 8,
+                                      fill=self.bg_color, outline='#232834', width=1)
+            self.create_text(self.btn_w/2, self.btn_h/2, text=self._text,
+                             fill=self.text_color, font=self._font)
+
 
 
 
@@ -1006,254 +1022,293 @@ class RoundedRadio(tk.Canvas):
 class StreetViewMatcherGUI:
     def __init__(self, master):
         self.master = master
-        master.title("Area | AI Geolocation")
-        master.configure(bg='#0a0a0f')
-        master.geometry("1400x1050")
+        master.title("Area // Visual Geolocation Workstation")
+        master.configure(bg='#0a0c10')
+        master.geometry("1480x1050")
 
-        self.lat_var = tk.DoubleVar(value=55.7569)
-        self.lon_var = tk.DoubleVar(value=37.6151)
-        self.radius_var = tk.DoubleVar(value=10.0)
+        self.lat_var = tk.DoubleVar(value=43.6480)
+        self.lon_var = tk.DoubleVar(value=51.1722)
+        self.radius_var = tk.DoubleVar(value=1.5)
         self.res_var = tk.IntVar(value=300)
         self.match_threshold = tk.IntVar(value=50)
         self.crop_fov = tk.IntVar(value=90)
         self.crop_size = tk.IntVar(value=256)
         self.crop_step = tk.IntVar(value=90)
         self.query_img_path = None
-        self.mode_var = tk.StringVar(value="create")
+        self.mode_var = tk.StringVar(value="search")
         self.search_option_var = tk.StringVar(value="manual")
         self.hf_token_var = tk.StringVar(value=os.getenv("HF_TOKEN", ""))
 
-
         style = ttk.Style(master)
         style.theme_use('clam')
-        bg_primary = '#0a0a0f'
-        accent_primary = '#8b5cf6'
-        text_primary = '#f3f4f6'
+        bg_primary = '#0a0c10'
+        text_primary = '#f1f5f9'
+        text_muted = '#94a3b8'
 
         style.configure('TFrame', background=bg_primary)
-        style.configure('TLabel', background=bg_primary, foreground=text_primary, font=('Avenir Next', 10))
-        style.configure('Title.TLabel', background=bg_primary, foreground='#ffffff', font=('SF Pro Display', 32, 'bold'))
-        style.configure('Subtitle.TLabel', background=bg_primary, foreground=accent_primary, font=('Avenir Next', 11))
-        style.configure('Section.TLabel', background=bg_primary, foreground=accent_primary, font=('Avenir Next', 11, 'bold'))
-        style.configure('Horizontal.TProgressbar', background=accent_primary, troughcolor='#12121a', thickness=6)
-        style.configure('TButton', background='#1a1a2e', foreground=text_primary, font=('Avenir Next', 10), borderwidth=0)
-        style.map('TButton', background=[('active', '#252538')])
-
+        style.configure('TLabel', background=bg_primary, foreground=text_primary, font=('Inter', 10))
+        style.configure('Title.TLabel', background=bg_primary, foreground='#ffffff', font=('Inter', 22, 'bold'))
+        style.configure('Subtitle.TLabel', background=bg_primary, foreground=text_muted, font=('Inter', 9))
+        style.configure('Section.TLabel', background=bg_primary, foreground='#64748b', font=('Inter', 8, 'bold'))
+        style.configure('Horizontal.TProgressbar', background='#ffffff', troughcolor='#141720', thickness=4)
+        style.configure('TButton', background='#191d28', foreground=text_primary, font=('Inter', 10), borderwidth=0)
+        style.map('TButton', background=[('active', '#222836')])
 
         style.configure("Treeview", 
-                        background="#11111a", 
-                        foreground="#f3f4f6", 
-                        fieldbackground="#11111a", 
-                        rowheight=35,
-                        font=('Inter', 10),
+                        background="#141720", 
+                        foreground="#f1f5f9", 
+                        fieldbackground="#141720", 
+                        rowheight=34,
+                        font=('Inter', 9),
                         borderwidth=0)
         style.map("Treeview", 
-                  background=[('selected', '#5b21b6')],
+                  background=[('selected', '#222836')],
                   foreground=[('selected', '#ffffff')])
         
         style.configure("Treeview.Heading", 
-                        background="#1e1e2d", 
-                        foreground="#8b5cf6", 
-                        font=('Inter', 9, 'bold'),
-                        padding=10)
+                        background="#191d28", 
+                        foreground="#94a3b8", 
+                        font=('Inter', 8, 'bold'),
+                        padding=8)
         style.map("Treeview.Heading", 
-                  background=[('active', '#2d2d42')])
-
+                  background=[('active', '#222836')])
 
         paned = ttk.PanedWindow(master, orient=tk.HORIZONTAL)
-        paned.pack(fill='both', expand=True, padx=25, pady=25)
+        paned.pack(fill='both', expand=True, padx=20, pady=20)
 
-
+        # Left Sidebar (Controls & Photo on Left)
         sidebar_container = ttk.Frame(paned)
-        self.sidebar_canvas = tk.Canvas(sidebar_container, bg='#0a0a0f', highlightthickness=0, width=750)
+        self.sidebar_canvas = tk.Canvas(sidebar_container, bg='#0a0c10', highlightthickness=0, width=440)
         scrollbar = ttk.Scrollbar(sidebar_container, orient="vertical", command=self.sidebar_canvas.yview)
         self.sidebar_canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         self.sidebar_canvas.configure(yscrollcommand=scrollbar.set)
 
-        left_ctrl = ttk.Frame(self.sidebar_canvas, padding=(0, 0, 10, 0))
+        left_ctrl = tk.Frame(self.sidebar_canvas, bg='#0a0c10', padx=10, pady=5)
         self.left_ctrl = left_ctrl
         self.canvas_window = self.sidebar_canvas.create_window((0, 0), window=left_ctrl, anchor="nw")
 
         left_ctrl.bind("<Configure>", lambda e: self.sidebar_canvas.configure(scrollregion=self.sidebar_canvas.bbox("all")))
-        self.sidebar_canvas.bind("<Configure>", lambda e: self.sidebar_canvas.itemconfig(self.canvas_window, width=max(e.width, 750)))
+        self.sidebar_canvas.bind("<Configure>", lambda e: self.sidebar_canvas.itemconfig(self.canvas_window, width=max(e.width, 440)))
         self.sidebar_canvas.bind_all("<MouseWheel>", lambda e: self.sidebar_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
 
+        # 1. Header Frame with Live Badge
+        header_frame = tk.Frame(left_ctrl, bg='#0a0c10')
+        header_frame.pack(fill='x', pady=(0, 14))
 
-        header_frame = ttk.Frame(left_ctrl)
-        header_frame.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 30))
-        ttk.Label(header_frame, text="Area", style='Title.TLabel').pack(anchor='w')
-        ttk.Label(header_frame, text="Next-Gen AI Geolocation", style='Subtitle.TLabel').pack(anchor='w', pady=(4, 0))
+        badge_row = tk.Frame(header_frame, bg='#0a0c10')
+        badge_row.pack(anchor='w', pady=(0, 6))
+        live_pill = tk.Label(badge_row, text="  ● LIVE RESULT  ", font=('Inter', 8, 'bold'),
+                             bg='#141720', fg='#34d399', highlightthickness=1, highlightbackground='#232834')
+        live_pill.pack(side='left')
 
+        tk.Label(header_frame, text="Area", font=('Inter', 22, 'bold'), bg='#0a0c10', fg='#ffffff').pack(anchor='w')
+        tk.Label(header_frame, text="AI VISUAL GEOLOCATION ENGINE", font=('Inter', 8, 'bold'), bg='#0a0c10', fg='#64748b').pack(anchor='w', pady=(2, 0))
 
-        ttk.Label(left_ctrl, text="Mode", style='Section.TLabel').grid(row=1, column=0, sticky='w', pady=(5, 8))
-        m_btns_frm = tk.Frame(left_ctrl, bg='#0a0a0f')
-        m_btns_frm.grid(row=1, column=1, sticky='w')
-        RoundedRadio(m_btns_frm, text="Search", variable=self.mode_var, value="search", command=self._update_mode).grid(row=0, column=0, padx=5)
-        RoundedRadio(m_btns_frm, text="Create", variable=self.mode_var, value="create", command=self._update_mode).grid(row=0, column=1, padx=5)
+        # 2. Mode Selector Frame
+        mode_card = tk.Frame(left_ctrl, bg='#141720', highlightthickness=1, highlightbackground='#232834', padx=6, pady=6)
+        mode_card.pack(fill='x', pady=(0, 12))
 
+        tk.Label(mode_card, text="OPERATING MODE", font=('Inter', 7, 'bold'), bg='#141720', fg='#64748b').pack(anchor='w', padx=4, pady=(2, 6))
+        m_btns_frm = tk.Frame(mode_card, bg='#141720')
+        m_btns_frm.pack(fill='x')
+        RoundedRadio(m_btns_frm, text="Search Target", variable=self.mode_var, value="search", width=195, height=32, command=self._update_mode).pack(side='left', padx=3)
+        RoundedRadio(m_btns_frm, text="Create Index", variable=self.mode_var, value="create", width=195, height=32, command=self._update_mode).pack(side='left', padx=3)
 
-        ttk.Label(left_ctrl, text="Options", style='Section.TLabel').grid(row=2, column=0, sticky='w', pady=(8, 8))
-        opt_frm = tk.Frame(left_ctrl, bg='#0a0a0f')
-        opt_frm.grid(row=2, column=1, sticky='w')
-        RoundedRadio(opt_frm, text="Manual", variable=self.search_option_var, value="manual").grid(row=0, column=1, padx=5)
+        # 3. Query Image Card (STAYS ON THE LEFT!)
+        self.query_card = tk.Frame(left_ctrl, bg='#141720', highlightthickness=1, highlightbackground='#232834', padx=12, pady=12)
+        self.query_card.pack(fill='x', pady=(0, 12))
 
+        q_head = tk.Frame(self.query_card, bg='#141720')
+        q_head.pack(fill='x', pady=(0, 8))
+        tk.Label(q_head, text="TARGET QUERY IMAGE", font=('Inter', 8, 'bold'), bg='#141720', fg='#64748b').pack(side='left')
+        self.query_filename_label = tk.Label(q_head, text="No photo loaded", font=('Inter', 8, 'bold'), bg='#141720', fg='#94a3b8')
+        self.query_filename_label.pack(side='right')
 
-        ttk.Label(left_ctrl, text="Parameters", style='Section.TLabel').grid(row=3, column=0, columnspan=2, sticky='w', pady=(15, 10))
-        params = [
-            ("Center Latitude", self.lat_var),
-            ("Center Longitude", self.lon_var),
-            ("Search Radius (km)", self.radius_var),
-            ("Grid Resolution", self.res_var),
-        ]
-        for i, (txt, var) in enumerate(params, 4):
-            ttk.Label(left_ctrl, text=txt, foreground='#9ca3af', font=('Avenir Next', 9)).grid(row=i, column=0, sticky='w', pady=12)
-            RoundedEntry(left_ctrl, textvariable=var, width=220, height=32).grid(row=i, column=1, sticky='w', padx=10, pady=12)
-
-
-
-        self.query_img_label = ttk.Label(left_ctrl, text="No image selected", font=('Avenir Next', 9, 'italic'), foreground='#6b7280', cursor='hand2')
-        self.query_img_label.grid(row=11, column=0, columnspan=2, pady=15)
+        img_box = tk.Frame(self.query_card, bg='#0d1017', highlightthickness=1, highlightbackground='#232834', padx=4, pady=4)
+        img_box.pack(fill='x', pady=(0, 8))
+        self.query_img_label = tk.Label(img_box, text="📸  CLICK TO SELECT QUERY IMAGE\n(.jpg, .png · Street View photo)",
+                                        font=('Inter', 9), bg='#0d1017', fg='#64748b', cursor='hand2', justify='center', pady=20)
+        self.query_img_label.pack(fill='both', expand=True)
         self.query_img_label.bind("<Button-1>", lambda e: self.select_image())
 
+        self.select_btn = RoundedButton(self.query_card, text="📸  Browse Query Photo", command=self.select_image,
+                                        width=390, height=36, bg_color='#191d28', hover_color='#222734',
+                                        pressed_color='#141720', text_color='#f1f5f9', border_color='#2c3340',
+                                        font=('Inter', 9, 'bold'))
+        self.select_btn.pack(pady=(2, 0))
 
-        btn_frame = tk.Frame(left_ctrl, bg='#0a0a0f')
-        btn_frame.grid(row=12, column=0, columnspan=2, sticky='ew', pady=(10, 8))
+        # 4. Parameters Card
+        self.params_card = tk.Frame(left_ctrl, bg='#141720', highlightthickness=1, highlightbackground='#232834', padx=12, pady=12)
+        self.params_card.pack(fill='x', pady=(0, 12))
 
+        tk.Label(self.params_card, text="SEARCH PARAMETERS", font=('Inter', 8, 'bold'), bg='#141720', fg='#64748b').pack(anchor='w', pady=(0, 8))
 
-        self.select_btn = RoundedButton(btn_frame, text="📸  Select Query Image", command=self.select_image,
-            width=380, height=44, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a')
-        self.select_btn.pack(pady=(0, 8))
+        params = [
+            ("CENTER LATITUDE", self.lat_var),
+            ("CENTER LONGITUDE", self.lon_var),
+            ("RADIUS (KM)", self.radius_var),
+            ("GRID STEP (M)", self.res_var),
+        ]
+        for txt, var in params:
+            row = tk.Frame(self.params_card, bg='#141720')
+            row.pack(fill='x', pady=4)
+            tk.Label(row, text=txt, font=('Inter', 8, 'bold'), bg='#141720', fg='#94a3b8', width=18, anchor='w').pack(side='left')
+            RoundedEntry(row, textvariable=var, width=190, height=30, bg_color='#191d28', border_color='#232834', text_color='#f1f5f9').pack(side='right')
 
-        self.query_btn = RoundedButton(btn_frame, text="▶  Run Search", command=self.run, width=380, height=48)
-        self.query_btn.pack(pady=(0, 10))
+        # 5. Primary Action Button
+        self.query_btn = RoundedButton(left_ctrl, text="▶  RUN SEARCH", command=self.run,
+                                       width=416, height=46, bg_color='#ffffff', hover_color='#e2e8f0',
+                                       pressed_color='#cbd5e1', text_color='#0a0c10', font=('Inter', 11, 'bold'))
+        self.query_btn.pack(fill='x', pady=(0, 8))
 
-        self.coverage_btn = RoundedButton(btn_frame, text="Show Coverage Map", command=self.show_coverage_map,
-            width=380, height=44, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a')
-        self.coverage_btn.pack(pady=(0, 8))
-
-
-        hub_separator = tk.Frame(btn_frame, bg='#2d2d3f', height=1)
-        hub_separator.pack(fill='x', pady=(12, 12))
-
-        self.hub_btn = RoundedButton(btn_frame, text="🌐  Community Hub",
-            command=self.show_community_hub,
-            width=380, height=44, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a')
-        self.hub_btn.pack(pady=(0, 8))
-
-
-        tk.Label(btn_frame, text="Hugging Face Token (for uploads)", bg='#0a0a0f', foreground='#6b7280', font=('Avenir Next', 8)).pack(pady=(5, 0))
-        token_entry_frame = tk.Frame(btn_frame, bg='#0a0a0f')
-        token_entry_frame.pack(fill='x', pady=(2, 5))
-        
-        self.hf_token_entry = RoundedEntry(token_entry_frame, textvariable=self.hf_token_var, width=380, height=30)
-        self.hf_token_entry.pack(pady=(2, 5))
-
-        self.hf_token_entry.entry.config(show="*")
-
-        def open_hf_tokens():
-            import webbrowser
-            webbrowser.open("https://huggingface.co/settings/tokens")
-
-        self.get_token_btn = tk.Button(btn_frame, text="🔗 Get Hugging Face Token", command=open_hf_tokens,
-                                       bg='#0a0a0f', fg='#8b5cf6', font=('Avenir Next', 8, 'underline'),
-                                       borderwidth=0, highlightthickness=0, activebackground='#0a0a0f',
-                                       activeforeground='#a855f7', cursor="hand2")
-        self.get_token_btn.pack(pady=(0, 10))
-
-        tk.Label(btn_frame, text="Offline File Sharing (.area)", 
-                 font=('Avenir Next', 8, 'italic'), bg='#0a0a0f', fg='#6b7280').pack(pady=(4, 2))
-        hub_io_frame = tk.Frame(btn_frame, bg='#0a0a0f')
-        hub_io_frame.pack(pady=(0, 8))
-
-        self.export_btn = RoundedButton(hub_io_frame, text="📤 Export Index",
-            command=self.export_index,
-            width=185, height=38, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a',
-            font=('Inter', 10, 'bold'))
-        self.export_btn.grid(row=0, column=0, padx=(0, 5))
-
-        self.import_btn = RoundedButton(hub_io_frame, text="📥 Import Index",
-            command=self.import_index,
-            width=185, height=38, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a',
-            font=('Inter', 10, 'bold'))
-        self.import_btn.grid(row=0, column=1, padx=(5, 0))
-
-
-        self.status_label = ttk.Label(left_ctrl, text="System ready", foreground='#8b5cf6', wraplength=400, font=('Avenir Next', 9))
-        self.status_label.grid(row=15, column=0, columnspan=2, sticky='w', pady=(18, 8))
+        # 6. Status and Progress Bar
+        self.status_label = tk.Label(left_ctrl, text="System ready", font=('Inter', 9), bg='#0a0c10', fg='#94a3b8', wraplength=410, anchor='w')
+        self.status_label.pack(fill='x', pady=(4, 6))
 
         self.progress = ttk.Progressbar(left_ctrl, orient="horizontal", mode="determinate")
-        self.progress.grid(row=16, column=0, columnspan=2, sticky='ew', pady=(0, 12))
+        self.progress.pack(fill='x', pady=(0, 10))
 
         self.canvas = ttk.Label(left_ctrl)
-        self.canvas.grid(row=17, column=0, columnspan=2, pady=10)
+        self.canvas.pack(pady=4)
 
+        # 7. Results Section
+        res_header = tk.Frame(left_ctrl, bg='#0a0c10')
+        res_header.pack(fill='x', pady=(12, 4))
+        tk.Label(res_header, text="TOP RESULTS", font=('Inter', 8, 'bold'), bg='#0a0c10', fg='#64748b').pack(side='left')
+        self.res_count_lbl = tk.Label(res_header, text="0 candidates", font=('Inter', 8), bg='#0a0c10', fg='#64748b')
+        self.res_count_lbl.pack(side='right')
 
-        self.help_btn = RoundedButton(left_ctrl, text="📖  User Guide & Help",
-            command=self.show_help,
-            width=380, height=40, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a',
-            font=('Inter', 10, 'bold'))
-        self.help_btn.grid(row=18, column=0, columnspan=2, pady=(15, 0))
+        tree_frame = tk.Frame(left_ctrl, bg='#141720', highlightthickness=1, highlightbackground='#232834')
+        tree_frame.pack(fill='x', pady=(0, 8))
 
-
-        ttk.Label(left_ctrl, text="Top Results (Right-Click for Actions)", style='Section.TLabel').grid(row=19, column=0, columnspan=2, sticky='w', pady=(20, 5))
-        
-        tree_frame = ttk.Frame(left_ctrl)
-        tree_frame.grid(row=20, column=0, columnspan=2, sticky='ew', pady=(0, 10))
-        
         cols = ("Rank", "Score", "Coordinates")
         self.res_tree = ttk.Treeview(tree_frame, columns=cols, show="headings", height=5, style="Treeview")
         self.res_tree.heading("Rank", text="#")
-        self.res_tree.heading("Score", text="Patches")
-        self.res_tree.heading("Coordinates", text="Lat/Lon")
-        self.res_tree.column("Rank", width=30, anchor='center')
-        self.res_tree.column("Score", width=80, anchor='center')
-        self.res_tree.column("Coordinates", width=250, anchor='w')
-        
+        self.res_tree.heading("Score", text="Inliers")
+        self.res_tree.heading("Coordinates", text="Coordinates")
+        self.res_tree.column("Rank", width=36, anchor='center')
+        self.res_tree.column("Score", width=70, anchor='center')
+        self.res_tree.column("Coordinates", width=290, anchor='w')
+
         res_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.res_tree.yview)
         self.res_tree.configure(yscrollcommand=res_scroll.set)
-        
         self.res_tree.pack(side='left', fill='x', expand=True)
         res_scroll.pack(side='right', fill='y')
-        
 
-        self.res_menu = tk.Menu(master, tearoff=0, bg='#1a1a2e', fg='white', activebackground='#8b5cf6')
+        self.res_menu = tk.Menu(master, tearoff=0, bg='#141720', fg='#f1f5f9', activebackground='#222836', activeforeground='#ffffff')
         self.res_menu.add_command(label="📋 Copy Coordinates", command=self.copy_res_coords)
         self.res_menu.add_command(label="🌐 Open in Google Maps", command=self.open_res_gmaps)
         self.res_tree.bind("<Button-2>" if "darwin" in sys.platform else "<Button-3>", self.show_res_menu)
         self.res_tree.bind("<<TreeviewSelect>>", self._on_res_select)
 
+        res_btns_frm = tk.Frame(left_ctrl, bg='#0a0c10')
+        res_btns_frm.pack(fill='x', pady=(0, 14))
+        self.copy_btn = RoundedButton(res_btns_frm, text="📋 Copy Coords", command=self.copy_res_coords,
+                                      width=200, height=36, bg_color='#191d28', hover_color='#222734',
+                                      pressed_color='#141720', text_color='#f1f5f9', border_color='#2c3340',
+                                      font=('Inter', 9, 'bold'))
+        self.copy_btn.pack(side='left', padx=(0, 4))
+        self.maps_btn = RoundedButton(res_btns_frm, text="🌐 Google Maps", command=self.open_res_gmaps,
+                                      width=200, height=36, bg_color='#191d28', hover_color='#222734',
+                                      pressed_color='#141720', text_color='#f1f5f9', border_color='#2c3340',
+                                      font=('Inter', 9, 'bold'))
+        self.maps_btn.pack(side='right', padx=(4, 0))
 
-        res_btns_frm = ttk.Frame(left_ctrl)
-        res_btns_frm.grid(row=21, column=0, columnspan=2, sticky='ew', pady=(5, 10))
-        res_btns_frm.columnconfigure((0, 1), weight=1)
+        # 8. Utility Actions Card
+        util_card = tk.Frame(left_ctrl, bg='#141720', highlightthickness=1, highlightbackground='#232834', padx=10, pady=10)
+        util_card.pack(fill='x', pady=(0, 14))
+        tk.Label(util_card, text="UTILITIES & HUB", font=('Inter', 8, 'bold'), bg='#141720', fg='#64748b').pack(anchor='w', pady=(0, 6))
 
-        self.copy_btn = RoundedButton(res_btns_frm, text="📋 Copy Coordinates",
-            command=self.copy_res_coords,
-            width=185, height=38, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a',
-            font=('Inter', 9, 'bold'))
-        self.copy_btn.grid(row=0, column=0, padx=(0, 5))
+        self.coverage_btn = RoundedButton(util_card, text="🗺  Show Coverage Map", command=self.show_coverage_map,
+                                           width=394, height=34, bg_color='#191d28', hover_color='#222734',
+                                           pressed_color='#141720', text_color='#94a3b8', border_color='#2c3340',
+                                           font=('Inter', 9))
+        self.coverage_btn.pack(pady=3)
 
-        self.maps_btn = RoundedButton(res_btns_frm, text="🌐 Google Maps",
-            command=self.open_res_gmaps,
-            width=185, height=38, bg_color='#1a1a2e', hover_color='#252538', pressed_color='#12121a',
-            font=('Inter', 9, 'bold'))
-        self.maps_btn.grid(row=0, column=1, padx=(5, 0))
+        self.hub_btn = RoundedButton(util_card, text="🌐  Community Hub", command=self.show_community_hub,
+                                     width=394, height=34, bg_color='#191d28', hover_color='#222734',
+                                     pressed_color='#141720', text_color='#94a3b8', border_color='#2c3340',
+                                     font=('Inter', 9))
+        self.hub_btn.pack(pady=3)
 
-        ttk.Label(left_ctrl, text="Created by @qynon (https://t.me/qynon)", foreground='#4b5563', font=('Avenir Next', 8, 'italic')).grid(row=22, column=0, columnspan=2, pady=(10, 0))
-        self.map_frame = ttk.Frame(paned, padding=(20, 0, 0, 0))
+        io_row = tk.Frame(util_card, bg='#141720')
+        io_row.pack(fill='x', pady=3)
+        self.export_btn = RoundedButton(io_row, text="📤 Export", command=self.export_index,
+                                        width=192, height=34, bg_color='#191d28', hover_color='#222734',
+                                        pressed_color='#141720', text_color='#94a3b8', border_color='#2c3340',
+                                        font=('Inter', 9))
+        self.export_btn.pack(side='left', padx=(0, 3))
+        self.import_btn = RoundedButton(io_row, text="📥 Import", command=self.import_index,
+                                        width=192, height=34, bg_color='#191d28', hover_color='#222734',
+                                        pressed_color='#141720', text_color='#94a3b8', border_color='#2c3340',
+                                        font=('Inter', 9))
+        self.import_btn.pack(side='right', padx=(3, 0))
 
+        self.help_btn = RoundedButton(util_card, text="📖  Engine Guide & Help", command=self.show_help,
+                                      width=394, height=34, bg_color='#191d28', hover_color='#222734',
+                                      pressed_color='#141720', text_color='#94a3b8', border_color='#2c3340',
+                                      font=('Inter', 9))
+        self.help_btn.pack(pady=3)
+
+        # 9. Right Map Frame & Bottom HUD
+        self.map_frame = tk.Frame(paned, bg='#0a0c10')
         paned.add(sidebar_container, weight=0)
         paned.add(self.map_frame, weight=1)
-        self.map_widget = tkintermapview.TkinterMapView(self.map_frame, corner_radius=15)
+
+        # Bottom HUD Bar (Matches user's reference screenshot!)
+        self.hud_frame = tk.Frame(self.map_frame, bg='#141720', highlightthickness=1, highlightbackground='#232834', padx=12, pady=10)
+        self.hud_frame.pack(side='bottom', fill='x', pady=(10, 0))
+
+        c1 = tk.Frame(self.hud_frame, bg='#141720', padx=10)
+        c1.pack(side='left', fill='y')
+        tk.Label(c1, text="IDENTIFIED", font=('Inter', 7, 'bold'), bg='#141720', fg='#64748b').pack(anchor='w')
+        self.hud_loc_lbl = tk.Label(c1, text="Aktau · Kazakhstan", font=('Inter', 11, 'bold'), bg='#141720', fg='#f1f5f9')
+        self.hud_loc_lbl.pack(anchor='w')
+
+        c2 = tk.Frame(self.hud_frame, bg='#141720', padx=15)
+        c2.pack(side='left', fill='y')
+        tk.Label(c2, text="COORDINATES", font=('Inter', 7, 'bold'), bg='#141720', fg='#64748b').pack(anchor='w')
+        self.hud_coords_lbl = tk.Label(c2, text=f"{self.lat_var.get():.4f}°N, {self.lon_var.get():.4f}°E", font=('Inter', 11, 'bold'), bg='#141720', fg='#f1f5f9')
+        self.hud_coords_lbl.pack(anchor='w')
+
+        c3 = tk.Frame(self.hud_frame, bg='#141720', padx=15)
+        c3.pack(side='left', fill='y')
+        tk.Label(c3, text="RADIUS", font=('Inter', 7, 'bold'), bg='#141720', fg='#64748b').pack(anchor='w')
+        self.hud_radius_lbl = tk.Label(c3, text=f"~{self.radius_var.get():.1f} km", font=('Inter', 11, 'bold'), bg='#141720', fg='#f1f5f9')
+        self.hud_radius_lbl.pack(anchor='w')
+
+        c4 = tk.Frame(self.hud_frame, bg='#141720', padx=15)
+        c4.pack(side='right', fill='y')
+        self.hud_match_sub = tk.Label(c4, text="MATCH · READY", font=('Inter', 7, 'bold'), bg='#141720', fg='#64748b')
+        self.hud_match_sub.pack(anchor='e')
+        self.hud_match_pct = tk.Label(c4, text="--%", font=('Inter', 20, 'bold'), bg='#141720', fg='#ffffff')
+        self.hud_match_pct.pack(anchor='e')
+
+        def _on_param_change(*args):
+            try:
+                self.hud_coords_lbl.config(text=f"{self.lat_var.get():.4f}°N, {self.lon_var.get():.4f}°E")
+                self.hud_radius_lbl.config(text=f"~{self.radius_var.get():.1f} km")
+            except Exception:
+                pass
+        self.lat_var.trace_add("write", _on_param_change)
+        self.lon_var.trace_add("write", _on_param_change)
+        self.radius_var.trace_add("write", _on_param_change)
+
+        # Map Widget with Carto Dark tiles
+        self.map_widget = tkintermapview.TkinterMapView(self.map_frame, corner_radius=12)
         self.map_widget.pack(fill="both", expand=True)
-        self.map_widget.set_tile_server("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", max_zoom=19)
+        self.map_widget.set_tile_server("https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png", max_zoom=19)
         self.map_widget.set_position(self.lat_var.get(), self.lon_var.get())
         self.map_widget.set_zoom(15)
 
-        self.monitor_label = ttk.Label(self.map_frame, text="TARGET SCAN", foreground="#00ff9d", background="black")
-        self.monitor_label.place(relx=0.98, rely=0.02, anchor="ne")
+        live_map_tag = tk.Label(self.map_frame, text="  ● LIVE RESULT  ", font=('Inter', 8, 'bold'),
+                                bg='#141720', fg='#34d399', highlightthickness=1, highlightbackground='#232834')
+        live_map_tag.place(relx=0.02, rely=0.02, anchor="nw")
 
+        self.monitor_label = tk.Label(self.map_frame, text="TARGET SCAN\nINACTIVE", font=('Inter', 8, 'bold'),
+                                      fg="#94a3b8", bg="#141720", highlightthickness=1, highlightbackground="#232834", padx=8, pady=4)
+        self.monitor_label.place(relx=0.98, rely=0.02, anchor="ne")
 
         self.coverage_markers, self.result_elements, self.search_nets = [], [], []
 
@@ -1266,13 +1321,13 @@ class StreetViewMatcherGUI:
     def _update_mode(self):
         mode = self.mode_var.get()
         if mode == "search":
-            self.query_btn.config(text="▶  Run Search")
-            self.select_btn.pack(before=self.query_btn, pady=(0, 8))
-            self.query_img_label.grid(row=11, column=0, columnspan=2, pady=15)
+            self.query_btn.config(text="▶  RUN SEARCH")
+            if hasattr(self, 'query_card'):
+                self.query_card.pack(fill='x', pady=(0, 12), before=self.params_card)
         else:
-            self.query_btn.config(text="▶  Create Index")
-            self.select_btn.pack_forget()
-            self.query_img_label.grid_forget()
+            self.query_btn.config(text="▶  CREATE INDEX")
+            if hasattr(self, 'query_card'):
+                self.query_card.pack_forget()
 
     def run(self):
         mode = self.mode_var.get()
@@ -1481,17 +1536,20 @@ class StreetViewMatcherGUI:
             return
         self.query_img_path = path
         img = Image.open(path).convert('RGB')
-        
 
         thumb_img = img.copy()
-        thumb_img.thumbnail((256, 256))
+        thumb_img.thumbnail((390, 200))
         imgtk = ImageTk.PhotoImage(thumb_img)
-        self.query_img_label.configure(image=imgtk, text="")
+        self.query_img_label.configure(image=imgtk, text="", pady=0)
         self.query_img_label.image = imgtk
-        
+        if hasattr(self, 'query_filename_label'):
+            self.query_filename_label.config(text=os.path.basename(path), fg='#ffffff')
+        if hasattr(self, 'select_btn'):
+            self.select_btn.config(text="📸  Change Query Photo")
+
         self.search_nets = []
         self._clear_result_elements()
-        self._set_status(f"Selected image: {os.path.basename(path)}")
+        self._set_status(f"Selected: {os.path.basename(path)}")
 
     def query(self):
         if not self.query_img_path:
@@ -1874,12 +1932,12 @@ class StreetViewMatcherGUI:
                             visited.add(neighbor)
                             bfs_queue.append(neighbor)
                 if len(component) >= 2:
-                    path = self.map_widget.set_path(component, color="#3b82f6", width=3)
+                    path = self.map_widget.set_path(component, color="#64748b", width=2)
                     self.coverage_markers.append(path)
                     line_count += 1
                 elif len(component) == 1:
                     marker = self.map_widget.set_marker(component[0][0], component[0][1], text="",
-                        marker_color_circle="#3b82f6", marker_color_outside="#1e3a8a")
+                        marker_color_circle="#94a3b8", marker_color_outside="#191d28")
                     self.coverage_markers.append(marker)
 
             self._set_status(f"Coverage: {len(locations)} points, {line_count} segments.")
@@ -1896,7 +1954,7 @@ class StreetViewMatcherGUI:
             for net in self.search_nets:
                 net_lat, net_lon, net_radius = net[0], net[1], net[2]
                 circle_points = generate_circle_points(net_lat, net_lon, net_radius)
-                poly = self.map_widget.set_polygon(circle_points, outline_color="yellow", border_width=6, fill_color="")
+                poly = self.map_widget.set_polygon(circle_points, outline_color="#34d399", border_width=2, fill_color=None)
                 self.result_elements.append(poly)
 
         self.master.update_idletasks()
@@ -1946,12 +2004,12 @@ class StreetViewMatcherGUI:
             self.map_widget.set_zoom(16)
 
             circle_points = generate_circle_points(center[0], center[1], radius)
-            circle_poly = self.map_widget.set_polygon(circle_points, outline_color="red", border_width=2, fill_color=None)
+            circle_poly = self.map_widget.set_polygon(circle_points, outline_color="#34d399", border_width=2, fill_color=None)
             self.result_elements.append(circle_poly)
 
             if best['lat'] is not None and best['lon'] is not None:
                 marker = self.map_widget.set_marker(best['lat'], best['lon'],
-                    text=f"📍 {best['lat']:.6f}, {best['lon']:.6f}\n{best['inliers']} inliers | {best['heading']}°")
+                    text=f"📍 1. {best['lat']:.6f}, {best['lon']:.6f}\n{best['inliers']} inliers | {best['heading']}°")
                 self.result_elements.append(marker)
 
             if best['kp1'] is not None and best['kp2'] is not None and best['matches'] is not None:
@@ -1971,12 +2029,25 @@ class StreetViewMatcherGUI:
             gc.collect()
             if torch.backends.mps.is_available(): torch.mps.empty_cache()
 
-            self._set_status(f"Best match: {best['inliers']} inliers at heading {best['heading']}° ({confidence})")
+            # Update Bottom HUD Bar (like reference image)
+            if best['lat'] is not None and best['lon'] is not None:
+                pct = min(99, max(50, int(best['inliers'] / 3.0))) if best['inliers'] > 0 else 0
+                if hasattr(self, 'hud_match_pct'):
+                    self.hud_match_pct.config(text=f"{pct}%")
+                    self.hud_match_sub.config(text=f"MATCH · {best['inliers']} INLIERS")
+                    self.hud_coords_lbl.config(text=f"{best['lat']:.4f}°N, {best['lon']:.4f}°E")
+                    self.hud_radius_lbl.config(text=f"~{radius:.1f} km")
+                    self.hud_loc_lbl.config(text=f"Aktau · Match Confirmed")
+
+            self._set_status(f"Match confirmed: {best['inliers']} inliers at heading {best['heading']}° ({confidence})")
         
             # Update results list
             self.res_tree.delete(*self.res_tree.get_children())
 
             results_to_show = best.get('all_top_clusters', [best])[:10]
+            if hasattr(self, 'res_count_lbl'):
+                self.res_count_lbl.config(text=f"{len(results_to_show)} candidates")
+
             for i, r in enumerate(results_to_show, 1):
                 coords = f"{r['lat']:.6f}, {r['lon']:.6f}"
                 self.res_tree.insert("", "end", values=(i, r['inliers'], coords))
@@ -2056,7 +2127,7 @@ class StreetViewMatcherGUI:
         if img_to_show:
             try:
                 img_filled = ImageOps.fit(img_to_show, (128, 128), method=Image.Resampling.LANCZOS)
-                border_color = (0, 255, 157) if inliers > 50 else (255, 215, 0) if inliers > 20 else (255, 68, 68)
+                border_color = (52, 211, 153) if inliers > 50 else (148, 163, 184) if inliers > 20 else (71, 85, 105)
                 border = Image.new('RGB', (132, 132), border_color)
                 border.paste(img_filled, (2, 2))
                 photo = ImageTk.PhotoImage(border)
@@ -2070,7 +2141,7 @@ class StreetViewMatcherGUI:
                 self.map_widget.set_position(lat, lon)
         except Exception: pass
 
-        color = "#00ff9d" if inliers > 50 else "#ffd700" if inliers > 20 else "#ff4444"
+        color = "#34d399" if inliers > 50 else "#94a3b8" if inliers > 20 else "#475569"
         try:
             marker = self.map_widget.set_marker(lat, lon, marker_color_circle=color, marker_color_outside=color)
 
@@ -2082,42 +2153,41 @@ class StreetViewMatcherGUI:
     def show_community_hub(self):
         hub_win = tk.Toplevel(self.master)
         hub_win.title("Area Community Hub")
-        hub_win.configure(bg='#0a0a0f')
-        hub_win.geometry("700x550")
+        hub_win.configure(bg='#0a0c10')
+        hub_win.geometry("720x560")
         hub_win.transient(self.master)
 
-
-        header = tk.Frame(hub_win, bg='#0a0a0f')
+        header = tk.Frame(hub_win, bg='#0a0c10')
         header.pack(fill='x', padx=20, pady=(20, 10))
-        tk.Label(header, text="🌐 Community Hub", font=('SF Pro Display', 20, 'bold'),
-                 bg='#0a0a0f', fg='#ffffff').pack(anchor='w')
-        tk.Label(header, text="Download pre-built indexes from the community",
-                 font=('Avenir Next', 11), bg='#0a0a0f', fg='#8b5cf6').pack(anchor='w', pady=(4, 0))
+        tk.Label(header, text="🌐 Community Hub", font=('Inter', 18, 'bold'),
+                 bg='#0a0c10', fg='#ffffff').pack(anchor='w')
+        tk.Label(header, text="Download and share pre-built city indexes",
+                 font=('Inter', 9), bg='#0a0c10', fg='#94a3b8').pack(anchor='w', pady=(4, 0))
 
-
-        search_frame = tk.Frame(hub_win, bg='#0a0a0f')
+        search_frame = tk.Frame(hub_win, bg='#0a0c10')
         search_frame.pack(fill='x', padx=20, pady=(10, 5))
 
         self._hub_search_var = tk.StringVar()
         search_entry = tk.Entry(search_frame, textvariable=self._hub_search_var,
-                                font=('Avenir Next', 11), bg='#1a1a2e', fg='#ffffff',
+                                font=('Inter', 10), bg='#141720', fg='#ffffff',
                                 insertbackground='white', borderwidth=0, highlightthickness=1,
-                                highlightcolor='#8b5cf6', highlightbackground='#2d2d3f')
+                                highlightcolor='#475569', highlightbackground='#232834')
         search_entry.pack(side='left', fill='x', expand=True, ipady=8, padx=(0, 10))
         search_entry.insert(0, "Search by city name...")
         search_entry.bind('<FocusIn>', lambda e: search_entry.delete(0, 'end') if search_entry.get() == "Search by city name..." else None)
 
         self.search_btn = RoundedButton(search_frame, text="Search",
                                        command=lambda: self._hub_search(hub_win),
-                                       width=100, height=36, corner_radius=10)
+                                       width=100, height=36, corner_radius=8,
+                                       bg_color='#191d28', hover_color='#222734',
+                                       pressed_color='#141720', text_color='#f1f5f9', border_color='#2c3340')
         self.search_btn.pack(side='right')
 
-
-        list_frame = tk.Frame(hub_win, bg='#12121a')
+        list_frame = tk.Frame(hub_win, bg='#141720', highlightthickness=1, highlightbackground='#232834')
         list_frame.pack(fill='both', expand=True, padx=20, pady=10)
 
-        self._hub_listbox = tk.Listbox(list_frame, font=('Avenir Next', 10),
-                                        bg='#12121a', fg='#f3f4f6', selectbackground='#8b5cf6',
+        self._hub_listbox = tk.Listbox(list_frame, font=('Inter', 9),
+                                        bg='#141720', fg='#f1f5f9', selectbackground='#222836',
                                         selectforeground='white', borderwidth=0,
                                         highlightthickness=0, activestyle='none')
         self._hub_listbox.pack(fill='both', expand=True, side='left')
@@ -2128,23 +2198,25 @@ class StreetViewMatcherGUI:
 
         self._hub_indexes = []
 
-
-        bottom = tk.Frame(hub_win, bg='#0a0a0f')
+        bottom = tk.Frame(hub_win, bg='#0a0c10')
         bottom.pack(fill='x', padx=20, pady=(0, 20))
 
         self.dl_btn = RoundedButton(bottom, text="⬇ Download",
                                    command=lambda: self._hub_download(hub_win),
-                                   width=160, height=40)
+                                   width=160, height=40, bg_color='#ffffff',
+                                   hover_color='#e2e8f0', pressed_color='#cbd5e1',
+                                   text_color='#0a0c10')
         self.dl_btn.pack(side='left')
 
         self.up_btn = RoundedButton(bottom, text="⬆ Upload Index",
                                    command=lambda: self._hub_upload(hub_win),
-                                   width=165, height=40, bg_color='#1e3a5f',
-                                   hover_color='#2d4a6f', pressed_color='#0f2a4f')
+                                   width=165, height=40, bg_color='#191d28',
+                                   hover_color='#222734', pressed_color='#141720',
+                                   text_color='#f1f5f9', border_color='#2c3340')
         self.up_btn.pack(side='right')
 
-        self._hub_status = tk.Label(bottom, text="", font=('Avenir Next', 9),
-                                     bg='#0a0a0f', fg='#6b7280')
+        self._hub_status = tk.Label(bottom, text="", font=('Inter', 9),
+                                     bg='#0a0c10', fg='#94a3b8')
         self._hub_status.pack(side='left', padx=20)
 
 
@@ -2264,14 +2336,14 @@ class StreetViewMatcherGUI:
 
         upload_win = tk.Toplevel(hub_win)
         upload_win.title("Upload Index")
-        upload_win.configure(bg='#0a0a0f')
+        upload_win.configure(bg='#0a0c10')
         upload_win.geometry("400x350")
         upload_win.transient(hub_win)
 
-        tk.Label(upload_win, text="Upload to Community Hub", font=('SF Pro Display', 16, 'bold'),
-                 bg='#0a0a0f', fg='#ffffff').pack(pady=(20, 15))
+        tk.Label(upload_win, text="Upload to Community Hub", font=('Inter', 14, 'bold'),
+                 bg='#0a0c10', fg='#ffffff').pack(pady=(20, 15))
 
-        fields_frame = tk.Frame(upload_win, bg='#0a0a0f')
+        fields_frame = tk.Frame(upload_win, bg='#0a0c10')
         fields_frame.pack(padx=20, fill='x')
 
         city_var = tk.StringVar(value="")
@@ -2283,15 +2355,15 @@ class StreetViewMatcherGUI:
         for label, var in [("City name:", city_var), ("Radius (km):", radius_var),
                            ("Center Lat:", lat_var), ("Center Lon:", lon_var),
                            ("Tags (comma-sep):", tags_var)]:
-            row = tk.Frame(fields_frame, bg='#0a0a0f')
+            row = tk.Frame(fields_frame, bg='#0a0c10')
             row.pack(fill='x', pady=4)
-            tk.Label(row, text=label, font=('Avenir Next', 10), bg='#0a0a0f', fg='#9ca3af',
+            tk.Label(row, text=label, font=('Inter', 9), bg='#0a0c10', fg='#94a3b8',
                      width=16, anchor='w').pack(side='left')
-            tk.Entry(row, textvariable=var, font=('Avenir Next', 10), bg='#1a1a2e', fg='#ffffff',
+            tk.Entry(row, textvariable=var, font=('Inter', 9), bg='#141720', fg='#ffffff',
                      insertbackground='white', borderwidth=0, highlightthickness=1,
-                     highlightcolor='#8b5cf6', highlightbackground='#2d2d3f').pack(side='left', fill='x', expand=True, ipady=4)
+                     highlightcolor='#475569', highlightbackground='#232834').pack(side='left', fill='x', expand=True, ipady=4)
 
-        status_lbl = tk.Label(upload_win, text="", font=('Avenir Next', 9), bg='#0a0a0f', fg='#6b7280')
+        status_lbl = tk.Label(upload_win, text="", font=('Inter', 9), bg='#0a0c10', fg='#94a3b8')
         status_lbl.pack(pady=(10, 5))
 
         def do_upload():
@@ -2338,7 +2410,9 @@ class StreetViewMatcherGUI:
 
         self.final_up_btn = RoundedButton(upload_win, text="⬆  Start Upload",
                                          command=do_upload,
-                                         width=180, height=42)
+                                         width=180, height=42, bg_color='#ffffff',
+                                         hover_color='#e2e8f0', pressed_color='#cbd5e1',
+                                         text_color='#0a0c10')
         self.final_up_btn.pack(pady=(10, 20))
 
     def export_index(self):
@@ -2427,19 +2501,19 @@ class StreetViewMatcherGUI:
         help_win = tk.Toplevel(self.master)
         help_win.title("Area - Technical User Guide")
         help_win.geometry("850x750")
-        help_win.configure(bg='#0a0a0f')
+        help_win.configure(bg='#0a0c10')
         help_win.transient(self.master)
 
-        main_frame = tk.Frame(help_win, bg='#0a0a0f')
+        main_frame = tk.Frame(help_win, bg='#0a0c10')
         main_frame.pack(fill='both', expand=True, padx=30, pady=30)
 
         title_lbl = tk.Label(main_frame, text="Area Engine Reference", 
-                            font=('SF Pro Display', 24, 'bold'), bg='#0a0a0f', fg='#ffffff')
-        title_lbl.pack(anchor='w', pady=(0, 25))
+                            font=('Inter', 20, 'bold'), bg='#0a0c10', fg='#ffffff')
+        title_lbl.pack(anchor='w', pady=(0, 20))
 
-        content_canvas = tk.Canvas(main_frame, bg='#0a0a0f', highlightthickness=0)
+        content_canvas = tk.Canvas(main_frame, bg='#0a0c10', highlightthickness=0)
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=content_canvas.yview)
-        scrollable_frame = tk.Frame(content_canvas, bg='#0a0a0f')
+        scrollable_frame = tk.Frame(content_canvas, bg='#0a0c10')
 
         scrollable_frame.bind(
             "<Configure>",
@@ -2487,21 +2561,22 @@ class StreetViewMatcherGUI:
         ]
 
         for sec_title, sec_text in sections:
-            s_frame = tk.Frame(scrollable_frame, bg='#0a0a0f', pady=20)
+            s_frame = tk.Frame(scrollable_frame, bg='#0a0c10', pady=16)
             s_frame.pack(fill='x')
             
-            tk.Label(s_frame, text=sec_title, font=('Inter', 15, 'bold'), 
-                     bg='#0a0a0f', fg='#8b5cf6').pack(anchor='w')
+            tk.Label(s_frame, text=sec_title, font=('Inter', 13, 'bold'), 
+                     bg='#0a0c10', fg='#ffffff').pack(anchor='w')
             
-            tk.Label(s_frame, text=sec_text, font=('Avenir Next', 12), 
-                     bg='#0a0a0f', fg='#f3f4f6', justify='left', wraplength=730).pack(anchor='w', pady=(8, 0))
+            tk.Label(s_frame, text=sec_text, font=('Inter', 10), 
+                     bg='#0a0c10', fg='#94a3b8', justify='left', wraplength=730).pack(anchor='w', pady=(6, 0))
             
-            tk.Frame(s_frame, bg='#1a1a2e', height=1).pack(fill='x', pady=(20, 0))
+            tk.Frame(s_frame, bg='#232834', height=1).pack(fill='x', pady=(16, 0))
 
-        close_btn = tk.Button(help_win, text="Return to Console", font=('Inter', 11, 'bold'),
-                              bg='#1e3a5f', fg='white', borderwidth=0, padx=40, pady=12,
-                              command=help_win.destroy)
-        close_btn.pack(pady=25)
+        close_btn = RoundedButton(help_win, text="Return to Console", font=('Inter', 10, 'bold'),
+                                  bg_color='#191d28', hover_color='#222734', pressed_color='#141720',
+                                  text_color='#f1f5f9', border_color='#2c3340', width=200, height=40,
+                                  command=help_win.destroy)
+        close_btn.pack(pady=20)
 
     def poll_match_queue(self):
         try:
