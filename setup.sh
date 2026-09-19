@@ -1,105 +1,81 @@
 #!/bin/bash
-# ═══════════════════════════════════════════════════════════════
-# Area — One-command setup
+# ===================================================================
+# Area - One-command setup
 # Run: chmod +x setup.sh && ./setup.sh
-# ═══════════════════════════════════════════════════════════════
+# ===================================================================
 set -e
 
 # Save the directory this script lives in (works even if called from elsewhere)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo ""
-echo "🔱 Area — Setup"
-echo "═══════════════════════════════════════"
+echo "Area - Setup"
+echo "==================================================="
 echo ""
 
-# ── Check Python ──
+# -- Check Python --
 if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 not found. Install Python 3.10+ first."
+    echo "[ERROR] Python 3 not found. Install Python 3.10+ first."
     exit 1
 fi
 
 PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-echo "✅ Python $PYTHON_VERSION found"
+echo "[OK] Python $PYTHON_VERSION found"
 
-# ── Create venv if not exists ──
+# -- Create venv if not exists --
 cd "$SCRIPT_DIR"
 if [ ! -d "venv" ]; then
-    echo "📦 Creating virtual environment..."
+    echo "[SETUP] Creating virtual environment..."
     python3 -m venv venv
 fi
 
 source venv/bin/activate 2>/dev/null || source venv/Scripts/activate 2>/dev/null
-echo "✅ Virtual environment activated"
+echo "[OK] Virtual environment activated"
 
-# ── Install Python dependencies ──
+# -- Install Python dependencies --
 echo ""
-echo "📦 Installing Python dependencies..."
+echo "[SETUP] Installing Python dependencies..."
 pip install --upgrade pip -q
 pip install -r requirements.txt -q
-echo "✅ Python dependencies installed"
+echo "[OK] Python dependencies installed"
 
-# ── Clone MASt3R if not present ──
+# -- Area-3R runtime check --
 echo ""
-MAST3R_DIR="$SCRIPT_DIR/../mast3r"
-if [ -d "$MAST3R_DIR" ]; then
-    echo "✅ MASt3R already cloned at $MAST3R_DIR"
+AREA_3R_RUNTIME_DIR="$SCRIPT_DIR/area_3r_runtime"
+if [ -d "$AREA_3R_RUNTIME_DIR" ]; then
+    echo "[OK] Area-3R runtime found at $AREA_3R_RUNTIME_DIR"
 else
-    echo "📥 Cloning MASt3R (this may take a minute)..."
-    cd "$SCRIPT_DIR/.."
-    git clone --recursive https://github.com/naver/mast3r.git
-    cd mast3r
-    pip install -r requirements.txt -q
-    pip install -r dust3r/requirements.txt -q
-    cd "$SCRIPT_DIR"
-    echo "✅ MASt3R cloned and dependencies installed"
+    echo "[INFO] Area-3R runtime not found at $AREA_3R_RUNTIME_DIR"
+    echo "[INFO] Place the Area-3R runtime there to enable geometric matching."
 fi
 
-# ── Pre-download MegaLoc weights ──
+# -- Verify bundled model weights (no internet download required) --
 echo ""
-echo "📥 Pre-downloading MegaLoc weights (first run only)..."
-cd "$SCRIPT_DIR"
-python3 -c "
-import torch
-try:
-    model = torch.hub.load('gmberton/MegaLoc', 'get_trained_model')
-    print('✅ MegaLoc weights downloaded')
-except Exception as e:
-    print(f'⚠️  MegaLoc download failed: {e}')
-    print('   Will retry automatically when you run the app.')
-" 2>/dev/null
+echo "[SETUP] Verifying bundled model weights..."
+if [ -f "$SCRIPT_DIR/Area-loc.safetensors" ]; then
+    echo "[OK] Area-loc weights found"
+else
+    echo "[WARN] Area-loc.safetensors missing"
+fi
+if [ -f "$SCRIPT_DIR/Area-3R/model.safetensors" ]; then
+    echo "[OK] Area-3R weights found"
+else
+    echo "[WARN] Area-3R/model.safetensors missing"
+fi
 
-# ── Pre-download MASt3R weights ──
-echo ""
-echo "📥 Pre-downloading MASt3R weights (first run only, ~1.2GB)..."
-python3 -c "
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join('$SCRIPT_DIR', '..', 'mast3r')))
-try:
-    from mast3r.model import AsymmetricMASt3R
-    model = AsymmetricMASt3R.from_pretrained('naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric')
-    print('✅ MASt3R weights downloaded')
-except Exception as e:
-    print(f'⚠️  MASt3R download failed: {e}')
-    print('   Will retry automatically when you run the app.')
-" 2>/dev/null
-
-# ── Create data directories ──
+# -- Create data directories --
 echo ""
 cd "$SCRIPT_DIR"
 mkdir -p area_data/area_parts
 mkdir -p area_data/index
-echo "✅ Data directories created"
+echo "[OK] Data directories created"
 
-# ── Done ──
+# -- Done --
 echo ""
-echo "═══════════════════════════════════════"
-echo "🔱 Setup complete!"
+echo "==================================================="
+echo "  Setup complete!"
 echo ""
-echo "To start Area:"
-echo "  source venv/bin/activate"
-echo "  python3 test_super.py"
-echo ""
-echo "Or to download a pre-built index:"
-echo "  python3 area_hub.py download moscow-1km -o ./area_data/index"
-echo "═══════════════════════════════════════"
+echo "  To run Area:"
+echo "    source venv/bin/activate"
+echo "    python3 test_super.py"
+echo "==================================================="

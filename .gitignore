@@ -12,8 +12,25 @@ ENV/
 
 # Runtime index data
 area_data/
-netryx_data/
+
+# Model weights (>100MB, keep local / HF)
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+Area-loc.safetensors
+Area-3R/
+
+# External runtime
+area_3r_runtime/
+
+# Bundles & temp archives
+*.area
+*.zip
+*.tar.gz
 
 # OS-specific files
 .DS_Store
 Thumbs.db
+

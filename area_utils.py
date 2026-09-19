@@ -9,7 +9,7 @@ import threading
 
 
 
-AREA_RAW_DIM = 8448          # Native Area/MegaLoc output dimension
+AREA_RAW_DIM = 8448          # Native Area-loc output dimension
 AREA_PCA_DIM = 1024          # Reduced dimension for indexing (tune as needed)
 AREA_INPUT_SIZE = 322        # Input resolution (multiple of 14)
 
@@ -24,6 +24,11 @@ if torch.backends.mps.is_available():
     _device = 'mps'
 elif torch.cuda.is_available():
     _device = 'cuda'
+    torch.backends.cudnn.benchmark = True
+    try:
+        torch.set_float32_matmul_precision('high')
+    except Exception:
+        pass
 else:
     _device = 'cpu'
 
@@ -31,10 +36,11 @@ else:
 
 
 def get_area_model(device=None):
-    """Load the Area/MegaLoc model (singleton, thread-safe).
-    
-    First tries torch.hub (requires internet on first run).
-    Falls back to local area_mode.py + manual weight loading.
+    """Load the Area-loc model (singleton, thread-safe).
+
+    Loads fully offline from the bundled weights file ``Area-loc.safetensors``
+    using the in-project ``area_loc_model.AreaLocModel`` architecture.
+    No internet access is required.
     """
     global _area_model
     if _area_model is not None:
@@ -45,29 +51,22 @@ def get_area_model(device=None):
             return _area_model
 
         dev = device or _device
-        print(f"[AREA] Loading Area model on {dev}...")
+        print(f"[Area-loc] Loading Area-loc model on {dev}...")
 
-        try:
-            try:
-                model = torch.hub.load("gmberton/MegaLoc", "get_trained_model", trust_repo=True)
-            except TypeError:
-                model = torch.hub.load("gmberton/MegaLoc", "get_trained_model")
-            print("[AREA] Loaded via torch.hub")
-        except Exception as e:
-            print(f"[AREA] torch.hub failed ({e}), trying local weights...")
-            # Fallback: load from local file if user has downloaded weights
-            from area_mode import AreaModel
-            model = AreaModel()
-            weights_path = os.path.join(os.path.dirname(__file__), "megaloc_weights.pth")
-            if os.path.exists(weights_path):
-                state = torch.load(weights_path, map_location='cpu')
-                model.load_state_dict(state)
-                print(f"[AREA] Loaded local weights from {weights_path}")
-            else:
-                raise RuntimeError(
-                    f"Could not load Area model. Install internet for torch.hub "
-                    f"or place weights at {weights_path}"
-                )
+        from area_loc_model import AreaLocModel
+        from safetensors.torch import load_file
+
+        weights_path = os.path.join(os.path.dirname(__file__), "Area-loc.safetensors")
+        if not os.path.exists(weights_path):
+            raise RuntimeError(
+                f"Area-loc weights not found at {weights_path}. "
+                f"The weights file must be bundled inside the project."
+            )
+
+        model = AreaLocModel()
+        state = load_file(weights_path)
+        model.load_state_dict(state)
+        print(f"[Area-loc] Loaded local weights from {weights_path}")
 
         model = model.eval().to(dev)
 
@@ -75,46 +74,15 @@ def get_area_model(device=None):
         for p in model.parameters():
             p.requires_grad_(False)
 
-
-        if hasattr(model, 'backbone'):
-            _original_backbone_forward = model.backbone.forward
-            _original_pos_interp = model.backbone.interpolate_pos_encoding
-
-            def _patched_pos_interp(x, w, h):
-                """Patched to use .reshape() instead of .view() for MPS."""
-                import math as _math
-                bb = model.backbone
-                previous_dtype = x.dtype
-                npatch = x.shape[1] - 1
-                N = bb.pos_embed.shape[1] - 1
-                if npatch == N and w == h:
-                    return bb.pos_embed
-                pos_embed = bb.pos_embed.float()
-                class_pos_embed = pos_embed[:, 0]
-                patch_pos_embed = pos_embed[:, 1:]
-                dim = x.shape[-1]
-                w0 = w // bb.patch_size
-                h0 = h // bb.patch_size
-                M = int(_math.sqrt(N))
-                sx = float(w0 + bb.interpolate_offset) / M
-                sy = float(h0 + bb.interpolate_offset) / M
-                patch_pos_embed = F.interpolate(
-                    patch_pos_embed.reshape(1, M, M, dim).permute(0, 3, 1, 2),
-                    scale_factor=(sx, sy), mode="bicubic",
-                    antialias=bb.interpolate_antialias)
-                assert (w0, h0) == patch_pos_embed.shape[-2:]
-
-                patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).reshape(1, -1, dim)
-                return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1).to(previous_dtype)
-
+        # Only apply MPS patch on MPS devices; on CUDA/CPU the native cached version is faster
+        if dev == 'mps' and hasattr(model, 'backbone'):
             def _patched_backbone_forward(images):
-                """Patched to add .contiguous() calls for MPS."""
                 bb = model.backbone
                 B, _, H, W = images.shape
                 x = bb.patch_embed(images)
                 cls_tokens = bb.cls_token.expand(B, -1, -1)
                 x = torch.cat((cls_tokens, x), dim=1)
-                x = x + _patched_pos_interp(x, H, W)
+                x = x + bb.interpolate_pos_encoding(x, W, H)
                 for block in bb.blocks:
                     x = block(x)
                 x = bb.norm(x)
@@ -127,11 +95,10 @@ def get_area_model(device=None):
                 return patch_features, cls_token
 
             model.backbone.forward = _patched_backbone_forward
-            print("[AREA] Applied MPS-compatible patches (.view -> .reshape)")
-
+            print("[Area-loc] Applied MPS-compatible patches")
 
         _area_model = model
-        print(f"[AREA] Model ready. Output dim: {AREA_RAW_DIM}")
+        print(f"[Area-loc] Model ready. Output dim: {AREA_RAW_DIM}")
         return _area_model
 
 
@@ -140,7 +107,7 @@ def get_area_model(device=None):
 def _preprocess_pil(pil_img, target_size=AREA_INPUT_SIZE):
     """Convert PIL image to normalized tensor for Area.
     
-    Area/MegaLoc expects [B, 3, H, W] with values in [0, 1].
+    Area-loc expects [B, 3, H, W] with values in [0, 1].
     H, W must be multiples of 14. The model auto-resizes internally,
     but we pre-resize for consistency and to control memory.
     """
@@ -156,18 +123,24 @@ def _preprocess_pil(pil_img, target_size=AREA_INPUT_SIZE):
 
 
 
-def extract_area_descriptor(pil_img, apply_pca_reduction=True):
-    """Extract Area descriptor from a single PIL image.
+def extract_area_descriptor(img_or_tensor, apply_pca_reduction=True):
+    """Extract Area descriptor from a single PIL image or torch Tensor.
     
     Args:
-        pil_img: PIL Image (any size, will be resized)
+        img_or_tensor: PIL Image or torch.Tensor of shape [3, H, W] or [1, 3, H, W]
         apply_pca_reduction: If True and PCA is fitted, reduce dimensions
         
     Returns:
         np.ndarray of shape (AREA_PCA_DIM,) or (AREA_RAW_DIM,)
     """
     model = get_area_model()
-    tensor = _preprocess_pil(pil_img).unsqueeze(0).to(_device)
+    if isinstance(img_or_tensor, torch.Tensor):
+        tensor = img_or_tensor
+        if tensor.ndim == 3:
+            tensor = tensor.unsqueeze(0)
+        tensor = tensor.to(_device)
+    else:
+        tensor = _preprocess_pil(img_or_tensor).unsqueeze(0).to(_device)
 
     with torch.no_grad():
         desc = model(tensor)  # [1, 8448]
@@ -180,12 +153,12 @@ def extract_area_descriptor(pil_img, apply_pca_reduction=True):
     return desc
 
 
-def batch_extract_area(pil_images, batch_size=16, apply_pca_reduction=False):
-    """Batch extract Area descriptors from a list of PIL images.
+def batch_extract_area(images_or_tensors, batch_size=32, apply_pca_reduction=False):
+    """Batch extract Area descriptors from a list of PIL images or a 4D torch.Tensor [N, 3, H, W].
     
     Args:
-        pil_images: List of PIL Images
-        batch_size: Batch size for inference
+        images_or_tensors: List of PIL Images OR torch.Tensor of shape [N, 3, H, W]
+        batch_size: Batch size for inference (default 32)
         apply_pca_reduction: If True and PCA is fitted, reduce dimensions
         
     Returns:
@@ -194,15 +167,20 @@ def batch_extract_area(pil_images, batch_size=16, apply_pca_reduction=False):
     model = get_area_model()
     all_descs = []
 
-    for i in range(0, len(pil_images), batch_size):
-        batch = pil_images[i:i + batch_size]
-        tensors = torch.stack([_preprocess_pil(img) for img in batch]).to(_device)
+    is_tensor = isinstance(images_or_tensors, torch.Tensor)
+    total_count = images_or_tensors.shape[0] if is_tensor else len(images_or_tensors)
+
+    for i in range(0, total_count, batch_size):
+        if is_tensor:
+            tensors = images_or_tensors[i:i + batch_size].to(_device)
+        else:
+            batch = images_or_tensors[i:i + batch_size]
+            tensors = torch.stack([_preprocess_pil(img) for img in batch]).to(_device)
 
         with torch.no_grad():
             descs = model(tensors)  # [B, 8448]
 
         all_descs.append(descs.cpu().numpy())
-
 
         if _device == 'mps' and (i // batch_size) % 10 == 0:
             torch.mps.empty_cache()
@@ -325,7 +303,7 @@ if __name__ == "__main__":
     print(f"Batch descriptor shape: {descs.shape}")
 
 
-    fake_data = np.random.randn(100, AREA_RAW_DIM).astype(np.float32)
+    fake_data = np.random.randn(600, AREA_RAW_DIM).astype(np.float32)
     fit_pca(fake_data, n_components=512)
     reduced = apply_pca(desc)
     print(f"PCA-reduced descriptor shape: {reduced.shape}")

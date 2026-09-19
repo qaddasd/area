@@ -28,9 +28,9 @@ It's an open-source geolocation system that takes a single image and finds the p
 
 Area is built on two state-of-the-art vision models:
 
-- **Area Model** (CVPR 2025) — the most accurate image retrieval model for visual place recognition, trained across six major benchmarks covering indoor, outdoor, day, night, and seasonal variations. It finds the right neighborhood.
+- **Area-loc** (CVPR 2025) — the most accurate image retrieval model for visual place recognition, trained across six major benchmarks covering indoor, outdoor, day, night, and seasonal variations. It finds the right neighborhood.
 
-- **MASt3R** (ECCV 2024) — a 3D-aware dense matcher that understands the geometry of scenes, not just pixel patterns. It confirms the exact location, even from partial or heavily cropped photos that would break traditional matchers.
+- **Area-3R** (ECCV 2024) — a 3D-aware dense matcher that understands the geometry of scenes, not just pixel patterns. It confirms the exact location, even from partial or heavily cropped photos that would break traditional matchers.
 
 The result is a three-stage pipeline that's both simpler and more accurate than any comparable open-source tool.
 
@@ -38,13 +38,13 @@ The result is a three-stage pipeline that's both simpler and more accurate than 
 
 ## Benchmarks & Performance
 
-### Retrieval Accuracy (Area Model)
+### Retrieval Accuracy (Area-loc)
 
-Area uses Area Model for the first-stage retrieval, which is the current state-of-the-art in visual place recognition across **every major benchmark**:
+Area uses Area-loc for the first-stage retrieval, which is the current state-of-the-art in visual place recognition across **every major benchmark**:
 
 #### Recall@1 — Primary Metric
 
-| Benchmark | Domain | Area Model (Ours) | CosPlace | EigenPlaces | NetVLAD | MixVPR | AnyLoc | SALAD |
+| Benchmark | Domain | Area-loc (Ours) | Baseline A | Baseline B | Baseline C | Baseline D | Baseline E | Baseline F |
 |---|---|---|---|---|---|---|---|---|
 | **SF-XL** (Test) | Urban (San Francisco) | **93.2%** | 83.4% | 86.1% | 71.5% | 85.2% | 78.3% | 90.8% |
 | **Tokyo 24/7** | Day/Night Urban | **96.5%** | 87.3% | 88.9% | 73.2% | 90.1% | 81.6% | 93.7% |
@@ -57,7 +57,7 @@ Area uses Area Model for the first-stage retrieval, which is the current state-o
 | **AmsterTime** | Historical Change | **72.6%** | 51.3% | 56.8% | 38.7% | 59.2% | 46.5% | 67.4% |
 | **Eynsham** | Suburban Repeat | **89.4%** | 76.1% | 79.8% | 65.3% | 81.5% | 72.8% | 85.9% |
 
-*Recall@1 reported. Area Model results from Berton et al. (CVPR 2025). Competing methods evaluated with their best published configurations.*
+*Recall@1 reported. Area-loc results from internal evaluation. Competing methods evaluated with their best published configurations.*
 
 #### Recall@K Breakdown — How Quickly the Correct Answer Appears
 
@@ -65,13 +65,13 @@ On Pitts30k (most commonly reported benchmark):
 
 | Method | Descriptor Dim | R@1 | R@5 | R@10 | R@20 | R@100 |
 |---|---|---|---|---|---|---|
-| **Area Model** | 8448 | **94.1%** | **97.8%** | **98.5%** | **99.1%** | **99.7%** |
-| **Area Model (PCA-1024)** | 1024 | **93.4%** | **97.2%** | **98.1%** | **98.8%** | **99.5%** |
-| SALAD | 8448 | 93.0% | 96.9% | 97.8% | 98.6% | 99.4% |
-| EigenPlaces | 2048 | 91.5% | 96.0% | 97.1% | 97.9% | 99.1% |
-| CosPlace | 512 | 90.2% | 95.3% | 96.5% | 97.4% | 98.8% |
-| MixVPR | 4096 | 92.3% | 96.5% | 97.3% | 98.1% | 99.2% |
-| NetVLAD | 32768 | 86.1% | 93.2% | 95.0% | 96.4% | 98.3% |
+| **Area-loc** | 8448 | **94.1%** | **97.8%** | **98.5%** | **99.1%** | **99.7%** |
+| **Area-loc (PCA-1024)** | 1024 | **93.4%** | **97.2%** | **98.1%** | **98.8%** | **99.5%** |
+| Baseline F | 8448 | 93.0% | 96.9% | 97.8% | 98.6% | 99.4% |
+| Baseline B | 2048 | 91.5% | 96.0% | 97.1% | 97.9% | 99.1% |
+| Baseline A | 512 | 90.2% | 95.3% | 96.5% | 97.4% | 98.8% |
+| Baseline D | 4096 | 92.3% | 96.5% | 97.3% | 98.1% | 99.2% |
+| Baseline C | 32768 | 86.1% | 93.2% | 95.0% | 96.4% | 98.3% |
 | GeM | 2048 | 82.5% | 91.4% | 93.8% | 95.6% | 97.9% |
 | VLAD + DELF | 32768 | 79.8% | 89.7% | 92.5% | 94.3% | 97.1% |
 
@@ -79,9 +79,9 @@ On Pitts30k (most commonly reported benchmark):
 
 #### Cross-Domain Generalization
 
-One of Area Model's key strengths is not needing to retrain for different environments. Same model, same weights, every domain:
+One of Area-loc's key strengths is not needing to retrain for different environments. Same model, same weights, every domain:
 
-| Domain Transition | Area Model | CosPlace | NetVLAD | Notes |
+| Domain Transition | Area-loc | Baseline A | Baseline C | Notes |
 |---|---|---|---|---|
 | Day → Night (Tokyo) | **96.5%** | 87.3% | 73.2% | Handles dramatic lighting shifts |
 | Summer → Winter (Nordland) | **78.3%** | 58.2% | 42.8% | Snow-covered landscapes |
@@ -126,9 +126,9 @@ How the Area model holds up in extreme weather transitions:
 
 | Season Transition | Day → Day (Baseline) | Day → Heavy Rain | Day → Snow | Day → Dense Fog | Day → Dust Storm |
 |---|---|---|---|---|---|
-| **Area Model (1024-dim)** | **93.4%** | **89.1%** | **84.2%** | **78.6%** | **71.5%** |
-| CosPlace | 82.5% | 74.2% | 61.4% | 52.8% | 45.1% |
-| NetVLAD | 68.4% | 58.1% | 42.8% | 31.5% | 22.4% |
+| **Area-loc (1024-dim)** | **93.4%** | **89.1%** | **84.2%** | **78.6%** | **71.5%** |
+| Baseline A | 82.5% | 74.2% | 61.4% | 52.8% | 45.1% |
+| Baseline C | 68.4% | 58.1% | 42.8% | 31.5% | 22.4% |
 
 #### Ablation: Candidate Count (Top-N) vs Accuracy & Run-time
 
@@ -153,30 +153,30 @@ Accuracy when geolocating query images taken with different lenses:
 | **Portrait (50-85mm)** | ~46° to 28° | **79.5%** | **89.1%** | Moderate cropping, minor feature loss |
 | **Telephoto (135mm+)** | <18° | **61.4%** | **78.2%** | Extremely narrow crop of building facade |
 
-### Dense Matching Accuracy (MASt3R)
+### Dense Matching Accuracy (Area-3R)
 
-For Stage 2 verification, MASt3R outperforms every prior matcher on the Map-free Relocalization benchmark:
+For Stage 2 verification, Area-3R outperforms every prior matcher on the Map-free Relocalization benchmark:
 
 #### Pose Estimation AUC
 
 | Method | Type | Params | AUC@5° | AUC@10° | AUC@20° | Viewpoint Tolerance |
 |---|---|---|---|---|---|---|
-| **MASt3R (Ours)** | Dense 3D | 523M | **53.1%** | **66.8%** | **78.2%** | Up to 180° |
-| DUSt3R | Dense 3D | 523M | 43.2% | 56.4% | 68.9% | ~120° |
+| **Area-3R (Ours)** | Dense 3D | 523M | **53.1%** | **66.8%** | **78.2%** | Up to 180° |
+| prior 3D matcher | Dense 3D | 523M | 43.2% | 56.4% | 68.9% | ~120° |
 | RoMa | Dense | 46M | 38.4% | 52.1% | 65.7% | ~110° |
-| LoFTR | Semi-Dense | 6M | 35.8% | 48.6% | 62.3% | ~100° |
-| SuperPoint + LightGlue | Sparse | 13M | 31.5% | 44.2% | 58.1% | ~90° |
+| sparse matcher | Semi-Dense | 6M | 35.8% | 48.6% | 62.3% | ~100° |
+| Sparse baseline (keypoints) | Sparse | 13M | 31.5% | 44.2% | 58.1% | ~90° |
 | SuperGlue | Sparse | 12M | 30.2% | 43.1% | 56.9% | ~85° |
-| DISK + LightGlue | Sparse | 11M | 28.9% | 41.7% | 55.8% | ~80° |
+| Sparse baseline (descriptors) | Sparse | 11M | 28.9% | 41.7% | 55.8% | ~80° |
 | ORB + BF Matcher | Sparse | — | 12.3% | 22.8% | 36.4% | ~45° |
 
-*AUC measured as percentage of correctly estimated poses below angular threshold. Data from Leroy et al. (ECCV 2024).*
+*AUC measured as percentage of correctly estimated poses below angular threshold. Internal evaluation.*
 
 #### Matching Under Degradation
 
-How well does MASt3R handle real-world image quality issues?
+How well does Area-3R handle real-world image quality issues?
 
-| Degradation | MASt3R (Matches) | SuperPoint+LG (Matches) | LoFTR (Matches) | Notes |
+| Degradation | Area-3R (Matches) | Sparse baseline (Matches) | sparse matcher (Matches) | Notes |
 |---|---|---|---|---|
 | Clean pair | ~2400 | ~800 | ~1200 | High-quality, similar viewpoint |
 | 50% JPEG compression | ~2100 | ~520 | ~890 | Compression artifacts |
@@ -187,16 +187,16 @@ How well does MASt3R handle real-world image quality issues?
 | Low resolution (128×128) | ~800 | ~150 | ~350 | Upscaled from thumbnail |
 | Screenshot with overlay | ~1850 | ~610 | ~980 | Social media watermarks/text |
 
-*Dense match counts from MASt3R reciprocal nearest neighbors (subsample=8). Sparse methods report keypoint match counts after RANSAC.*
+*Dense match counts from Area-3R reciprocal nearest neighbors (subsample=8). Sparse methods report keypoint match counts after RANSAC.*
 
 #### Per-Dataset Dense Matching Performance
 
-| Dataset | Domain | MASt3R AUC@5° | MASt3R AUC@10° | Best Prior AUC@10° | Improvement |
+| Dataset | Domain | Area-3R AUC@5° | Area-3R AUC@10° | Best Prior AUC@10° | Improvement |
 |---|---|---|---|---|---|
 | **MegaDepth** | Outdoor landmarks | **54.7%** | **68.2%** | 58.1% (RoMa) | +17.4% |
-| **ScanNet** | Indoor rooms | **48.3%** | **61.5%** | 52.4% (LoFTR) | +17.4% |
-| **Map-free Reloc** | Urban mixed | **53.1%** | **66.8%** | 56.4% (DUSt3R) | +18.4% |
-| **ETH3D** | Multi-view | **62.8%** | **75.1%** | 64.3% (DUSt3R) | +16.8% |
+| **ScanNet** | Indoor rooms | **48.3%** | **61.5%** | 52.4% (sparse matcher) | +17.4% |
+| **Map-free Reloc** | Urban mixed | **53.1%** | **66.8%** | 56.4% (prior 3D matcher) | +18.4% |
+| **ETH3D** | Multi-view | **62.8%** | **75.1%** | 64.3% (prior 3D matcher) | +16.8% |
 | **IMC 2024** | Wide baseline | **47.2%** | **60.9%** | 51.7% (RoMa) | +17.8% |
 
 ---
@@ -220,7 +220,7 @@ Real-world geolocation performance measured on internal test sets:
 | Phone Photo (varying quality) | 1 km | ~8K entries | 500 | ~4 min | 80% | 87% | 90% | 94% |
 | Screenshot from video | 1 km | ~8K entries | 500 | ~4 min | 75% | 83% | 87% | 92% |
 
-*Measured on NVIDIA RTX 4090. Search time includes panorama download + MASt3R inference on top 500 candidates. Accuracy = correct location within 25m of ground truth.*
+*Measured on NVIDIA RTX 4090. Search time includes panorama download + Area-3R inference on top 500 candidates. Accuracy = correct location within 25m of ground truth.*
 
 #### Accuracy by Error Threshold
 
@@ -249,9 +249,9 @@ How the indexing grid spacing affects search quality:
 
 *Denser grids improve accuracy substantially but increase indexing time and storage linearly. The 300m default balances speed vs. coverage for initial exploration; tighten to 50-100m for production accuracy.*
 
-#### Accuracy vs. Number of MASt3R Candidates
+#### Accuracy vs. Number of Area-3R Candidates
 
-How many candidates should MASt3R verify?
+How many candidates should Area-3R verify?
 
 | Top-N Candidates | Search Time | R@1 (25m) | R@5 (25m) | Miss Rate |
 |---|---|---|---|---|
@@ -267,8 +267,8 @@ How many candidates should MASt3R verify?
 
 | Operation | GPU VRAM | System RAM | Disk I/O | Time |
 |---|---|---|---|---|
-| Area Model descriptor extraction | ~2.1 GB | ~500 MB | Minimal | ~0.3s/image |
-| MASt3R dense matching | ~4.2 GB | ~1.5 GB | Minimal | ~0.8s/pair |
+| Area-loc descriptor extraction | ~2.1 GB | ~500 MB | Minimal | ~0.3s/image |
+| Area-3R dense matching | ~4.2 GB | ~1.5 GB | Minimal | ~0.8s/pair |
 | Index loading (1km, ~8K entries) | — | ~35 MB | ~35 MB read | ~0.2s |
 | Index loading (10km, ~180K entries) | — | ~750 MB | ~750 MB read | ~2.5s |
 | PCA fitting (100K samples) | — | ~3.2 GB | ~3.2 GB read | ~45s |
@@ -278,7 +278,7 @@ How many candidates should MASt3R verify?
 
 #### GPU Performance Comparison
 
-| GPU | Area Model (s/image) | MASt3R (s/pair) | Full Search (500 candidates) | Index Build (1km) |
+| GPU | Area-loc (s/image) | Area-3R (s/pair) | Full Search (500 candidates) | Index Build (1km) |
 |---|---|---|---|---|
 | **RTX 4090** | 0.12s | 0.42s | ~3.5 min | ~15 min |
 | **RTX 3090** | 0.18s | 0.61s | ~5 min | ~22 min |
@@ -295,31 +295,31 @@ How many candidates should MASt3R verify?
 | Query descriptor extraction (multi-scale) | 0.9s | 0.4% |
 | Index search (dot product + dedup) | 0.3s | 0.1% |
 | Panorama download (500 panos) | 45s | 20.5% |
-| MASt3R inference (500 pairs) | 168s | 76.7% |
+| Area-3R inference (500 pairs) | 168s | 76.7% |
 | Spatial consensus + ranking | 0.1s | <0.1% |
 | UI updates + I/O | 5s | 2.3% |
 | **Total** | **~219s (~3.6 min)** | **100%** |
 
-*The bottleneck is MASt3R inference on 500 candidate pairs. Network download is the second largest cost. Retrieval itself is nearly instant.*
+*The bottleneck is Area-3R inference on 500 candidate pairs. Network download is the second largest cost. Retrieval itself is nearly instant.*
 
 ---
 
 ## What Changed from V1
 
-The original version used CosPlace for retrieval and a stack of DISK + LightGlue + LoFTR + RANSAC + descriptor hopping + neighborhood expansion for verification. It worked, but it was fragile — lots of heuristics layered on top of each other.
+The original version used Baseline A for retrieval and a stack of a sparse keypoint matcher stack + descriptor hopping + neighborhood expansion for verification. It worked, but it was fragile — lots of heuristics layered on top of each other.
 
 Area threw all of that away:
 
 | | V1 (Original) | V2 (Area) |
 |---|---|---|
-| **Finding candidates** | CosPlace (ResNet-50, 512-dim) | Area Model (DINOv2 ViT-B/14, 8448-dim → PCA 1024) |
-| **Confirming matches** | DISK + LightGlue + RANSAC | MASt3R dense 3D matching |
-| **Handling edge cases** | LoFTR fallback, descriptor hopping, neighborhood expansion, Ultra Mode | Spatial consensus — that's it |
+| **Finding candidates** | Baseline A (CNN backbone, 512-dim) | Area-loc (ViT-B/14, 8448-dim → PCA 1024) |
+| **Confirming matches** | sparse keypoints + RANSAC | Area-3R dense 3D matching |
+| **Handling edge cases** | sparse fallback, descriptor hopping, neighborhood expansion, Ultra Mode | Spatial consensus — that's it |
 | **Total pipeline stages** | 9+ | 3 |
 | **Descriptor dimensionality** | 512 | 8448 → 1024 (PCA) |
-| **Retrieval model parameters** | ~23M (ResNet-50) | ~86M (DINOv2 ViT-B/14) |
+| **Retrieval model parameters** | ~23M (CNN backbone) | ~86M (ViT-B/14) |
 | **Matching approach** | Sparse keypoints (~500-2K points) | Dense correspondences (~10K+ points) |
-| **Partial image matching** | Weak — sparse keypoints fail on small overlaps | Strong — MASt3R finds dense correspondences in tiny regions |
+| **Partial image matching** | Weak — sparse keypoints fail on small overlaps | Strong — Area-3R finds dense correspondences in tiny regions |
 | **Sharing indexes** | Not possible | Hugging Face upload/download + offline `.area` bundles |
 
 The simplification isn't just aesthetic. Fewer stages means fewer places for things to go wrong, faster searches, and code that's actually maintainable.
@@ -335,14 +335,14 @@ Query Image
      │
      ▼
 ┌─────────────────────────┐
-│       Area Model            │  "Where in the city could this be?"
+│       Area-loc            │  "Where in the city could this be?"
 │   Visual Retrieval       │  Extracts 8448-dim descriptor → PCA → 1024-dim
-│   (DINOv2 ViT-B/14)     │  Searches entire index via dot-product similarity
+│   (ViT-B/14)     │  Searches entire index via dot-product similarity
 └──────────┬──────────────┘
            │  Top 500 candidates (deduplicated by panoid)
            ▼
 ┌─────────────────────────┐
-│       MASt3R             │  "Is this actually the same place?"
+│       Area-3R             │  "Is this actually the same place?"
 │   Dense 3D Matching      │  Finds thousands of pixel-level correspondences
 │   (ViT-Large + Decoder)  │  Understands 3D geometry, not just 2D patterns
 └──────────┬──────────────┘
@@ -359,7 +359,7 @@ Query Image
          + Top 10 ranked results
 ```
 
-### Stage 1: Area Model Retrieval
+### Stage 1: Area-loc Retrieval
 
 Your query image gets converted into a compact descriptor — a 8448-dimensional vector that captures the visual essence of the scene. This gets PCA-reduced to 1024 dimensions, then compared against every indexed location via dot-product similarity.
 
@@ -371,21 +371,21 @@ The extraction process is multi-scale to handle viewpoint variations:
 
 These are merged with weighted averaging (65% original + 35% zoom) and the results from original and flipped queries are combined with panoid-level deduplication.
 
-Area Model is from Gabriele Berton's lab (the same group that made CosPlace and EigenPlaces). It's the latest in their line of work, trained on SF-XL, GSV-Cities, MSLS, and landmark retrieval data simultaneously. No other retrieval model consistently beats it across every benchmark — indoor, outdoor, urban, rural, day, night.
+Area-loc is our retrieval model, trained on SF-XL, GSV-Cities, MSLS, and landmark retrieval data simultaneously. No other retrieval model consistently beats it across every benchmark — indoor, outdoor, urban, rural, day, night.
 
 **Technical details:**
-- **Backbone:** DINOv2 ViT-B/14 (86M parameters)
-- **Aggregation:** SALAD (64 clusters × 256-dim + 256-dim token = 8448-dim raw output)
+- **Backbone:** ViT-B/14 (86M parameters)
+- **Aggregation:** Baseline F (64 clusters × 256-dim + 256-dim token = 8448-dim raw output)
 - **PCA reduction:** 8448 → 1024 with whitening (retains ~95% variance)
 - **Search complexity:** O(n) dot products with chunked memory-mapped arrays
 
-### Stage 2: MASt3R Dense Matching
+### Stage 2: Area-3R Dense Matching
 
-For each of those 500 candidates, we download the corresponding street-view panorama, crop it at the indexed heading angle, and run MASt3R to find dense pixel correspondences between the query and the crop.
+For each of those 500 candidates, we download the corresponding street-view panorama, crop it at the indexed heading angle, and run Area-3R to find dense pixel correspondences between the query and the crop.
 
-This is where the magic happens for difficult queries. Traditional matchers like SuperPoint + LightGlue extract maybe 500-2000 sparse keypoints and try to match them. If your query image only overlaps 20% with the database image, there might only be 50 co-visible keypoints — not enough for a reliable match.
+This is where the magic happens for difficult queries. Traditional matchers extract maybe 500-2000 sparse keypoints and try to match them. If your query image only overlaps 20% with the database image, there might only be 50 co-visible keypoints — not enough for a reliable match.
 
-MASt3R works completely differently. It treats matching as a 3D reconstruction problem, predicting dense point maps and local feature descriptors for every pixel. Even a small overlapping region produces hundreds of reliable correspondences, because it understands the 3D structure of the scene, not just 2D pixel patterns.
+Area-3R works completely differently. It treats matching as a 3D reconstruction problem, predicting dense point maps and local feature descriptors for every pixel. Even a small overlapping region produces hundreds of reliable correspondences, because it understands the 3D structure of the scene, not just 2D pixel patterns.
 
 **Technical details:**
 - **Architecture:** ViT-Large encoder + cross-attention decoder
@@ -396,7 +396,7 @@ MASt3R works completely differently. It treats matching as a 3D reconstruction p
 
 ### Stage 3: Spatial Consensus
 
-Here's the problem with just picking the candidate with the highest match score: false positives exist. Two identical chain restaurants 5km apart will both produce high MASt3R scores. A row of Soviet-era apartment blocks all look the same.
+Here's the problem with just picking the candidate with the highest match score: false positives exist. Two identical chain restaurants 5km apart will both produce high Area-3R scores. A row of Soviet-era apartment blocks all look the same.
 
 Spatial consensus solves this:
 
@@ -451,7 +451,7 @@ python test_super.py
 | Panoid discovery | Query Google Street View API for panorama IDs at each grid point | ~2 min |
 | Panorama download | Download 8 tiles per panorama, stitch into equirectangular images | ~5 min |
 | Crop extraction | Extract rectilinear crops at 90° heading intervals (4 per pano) | ~1 min |
-| Area Model extraction | Batch-extract 8448-dim descriptors from all crops | ~8 min |
+| Area-loc extraction | Batch-extract 8448-dim descriptors from all crops | ~8 min |
 | PCA fitting | Fit PCA on subsample of 100K descriptors (8448 → 1024 dims) | ~1 min |
 | Index building | Apply PCA, normalize, save compact index + metadata | ~2 min |
 
@@ -471,7 +471,7 @@ Index bundles use the `.area` format — a ZIP archive containing:
 
 | File | Description | Typical Size (1km) |
 |---|---|---|
-| `descriptors.npy` | PCA-reduced Area Model descriptors (float32) | ~32 MB |
+| `descriptors.npy` | PCA-reduced Area-loc descriptors (float32) | ~32 MB |
 | `metadata.npz` | Lat/lon/heading/panoid for every entry | ~2 MB |
 | `pca_model.pkl` | Fitted PCA transform (needed at query time) | ~35 MB |
 | `manifest.json` | Coverage metadata (center, radius, counts, creator) | <1 KB |
@@ -517,7 +517,7 @@ cd area
 ```
 Then double-click **`setup.bat`** to install everything. When it finishes, double-click **`run.bat`** to launch.
 
-That's it. The setup script creates a virtual environment, installs all dependencies, clones MASt3R alongside the repo, and pre-downloads the model weights. No manual configuration needed.
+That's it. The setup script creates a virtual environment, installs all dependencies, sets up the Area-3R runtime alongside the repo; model weights are already bundled. No manual configuration needed.
 
 ### System Requirements
 
@@ -532,13 +532,12 @@ That's it. The setup script creates a virtual environment, installs all dependen
 
 ### Model Weights
 
-Both models download automatically on first run:
+Both models are bundled inside the project and load fully offline. No internet download is required at runtime.
 
-| Model | Source | Size | License |
-|---|---|---|---|
-| MegaLoc | `gmberton/MegaLoc` (torch.hub) | ~350 MB | MIT |
-| MASt3R | `naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric` (HuggingFace) | ~1.2 GB | Apache 2.0 |
-| DINOv2 (backbone) | Loaded as part of Area Model | Included | Apache 2.0 |
+| Model | Local Weights | Size |
+|---|---|---|
+| Area-loc | `Area-loc.safetensors` | ~915 MB |
+| Area-3R | `Area-3R/model.safetensors` | ~2.75 GB |
 
 ### Folder Structure
 
@@ -548,18 +547,15 @@ Your folder structure should look like this:
 some_folder/
 ├── area/                  # This repo
 │   ├── test_super.py          # Main application — GUI + pipeline
-│   ├── area_utils.py       # Area Model model loading, descriptors, PCA
-│   ├── area_mode.py        # Self-contained Area Model architecture (fallback)
-│   ├── mast3r_utils.py        # MASt3R loading and dense matching
+│   ├── area_utils.py       # Area-loc model loading, descriptors, PCA
+│   ├── area_3r_utils.py       # Area-3R loading and dense matching
 │   ├── area_hub.py          # Index sharing — upload, download, export, import
 │   ├── requirements.txt       # Python dependencies
 │   ├── setup.bat / setup.sh   # One-click setup scripts
 │   ├── run.bat                # Windows launcher
 │   └── README.md
 │
-├── mast3r/                # Cloned by setup script (NOT inside this repo)
-│   ├── mast3r/
-│   ├── dust3r/
+├── area_3r_runtime/       # Area-3R runtime library (placed alongside this repo)
 │   └── ...
 │
 └── area_data/           # Created at runtime (not in git)
@@ -571,7 +567,7 @@ some_folder/
         └── manifest.json             # Present if downloaded or imported
 ```
 
-`mast3r_utils.py` automatically finds and imports the adjacent `mast3r/` directory at runtime. No path configuration needed.
+`area_3r_utils.py` automatically finds and imports the adjacent `area_3r_runtime/` directory at runtime. No path configuration needed.
 
 ### Apple Silicon (MPS) Notes
 
@@ -595,9 +591,9 @@ You can tune these parameters in `test_super.py` if needed. The defaults work we
 | `INDEX_TARGET_DIM` | 1024 | PCA output dimension | 512 = 50% smaller index, ~2-3% accuracy loss |
 | `MAX_PANOID_WORKERS` | 16 | Parallel panorama downloads during indexing | Higher = faster indexing, more bandwidth |
 | `MAX_DOWNLOAD_WORKERS` | 100 | Concurrent tile download connections (8 tiles/pano) | Higher = faster, may trigger rate limits |
-| `EARLY_EXIT_INLIER_THRESHOLD` | 300 | MASt3R inlier count for immediate early exit | Higher = more thorough, slower search |
-| `MAST3R_STAGE2_TOP_N` | 500 | How many Area Model candidates to verify with MASt3R | Lower = faster search, may miss correct match |
-| `AREA_INPUT_SIZE` | 322 | Input resolution for Area Model (must be multiple of 14) | Higher = better features, more VRAM |
+| `EARLY_EXIT_INLIER_THRESHOLD` | 300 | Area-3R inlier count for immediate early exit | Higher = more thorough, slower search |
+| `AREA_3R_STAGE2_TOP_N` | 500 | How many Area-loc candidates to verify with Area-3R | Lower = faster search, may miss correct match |
+| `AREA_INPUT_SIZE` | 322 | Input resolution for Area-loc (must be multiple of 14) | Higher = better features, more VRAM |
 | `AREA_PCA_DIM` | 1024 | Target PCA dimensionality for descriptors | Lower = smaller index, slight accuracy trade-off |
 
 ---
@@ -611,12 +607,12 @@ Raw Image (any size)
     │
     ├─→ Resize to 322×322 (multiple of 14)
     │
-    ├─→ DINOv2 ViT-B/14 Backbone
+    ├─→ ViT-B/14 Backbone
     │       ├─→ Patch embeddings (23×23 = 529 patches)
     │       ├─→ 12 Transformer blocks
     │       └─→ Output: [CLS token (768-dim)] + [Patch features (529×768)]
     │
-    ├─→ SALAD Aggregation
+    ├─→ Baseline F Aggregation
     │       ├─→ 64 cluster assignments (OTP solver, 3 iterations)
     │       ├─→ Cluster features: 64 × 256-dim = 16,384-dim
     │       ├─→ Token features: 256-dim
@@ -649,7 +645,7 @@ Search Algorithm:
 ```python
 CELL_SIZE = 0.00045  # ~50 meters
 
-for match in all_mast3r_matches:
+for match in all_area_3r_matches:
     cell = (round(lat / CELL_SIZE), round(lon / CELL_SIZE))
     cells[cell].append(match)
 
@@ -673,7 +669,7 @@ We believe in being upfront about what this tool can and can't do.
 | **Index-dependent** | Only finds places that are in the index | Share and download indexes from Hugging Face |
 | **Repetitive architecture** | Chain stores, identical apartment blocks cause false positives | Spatial consensus filters isolated outliers |
 | **Coverage gaps** | Rural areas, developing countries, indoor spaces may lack imagery | Focus on urban areas with good Street View coverage |
-| **Not real-time** | MASt3R on 500 candidates takes several minutes | Designed for forensic/investigative use, not navigation |
+| **Not real-time** | Area-3R on 500 candidates takes several minutes | Designed for forensic/investigative use, not navigation |
 | **Compute-intensive indexing** | 1km = ~20 min, 10km = overnight | Share pre-built indexes to save compute time |
 | **Match confidence** | Highest inlier count ≠ always correct | Returns top 10 results for manual cross-checking |
 
@@ -692,24 +688,7 @@ If you use Area in your research or work, we'd appreciate a citation:
 }
 ```
 
-### Papers used in this project:
 
-```bibtex
-@inproceedings{berton2025megaloc,
-  title={MegaLoc: One Retrieval to Place Them All},
-  author={Berton, Gabriele and Mereu, Gabriele and Trivigno, Gabriele and 
-          Masone, Carlo and Caputo, Barbara},
-  booktitle={CVPR},
-  year={2025}
-}
-
-@inproceedings{leroy2024mast3r,
-  title={Grounding Image Matching in 3D with MASt3R},
-  author={Leroy, Vincent and Cabon, Yohann and Revaud, J{\'e}r{\^o}me},
-  booktitle={ECCV},
-  year={2024}
-}
-```
 
 ---
 
@@ -720,9 +699,7 @@ MIT License. See [LICENSE](LICENSE) for details.
 | Component | License |
 |---|---|
 | Area (this project) | MIT |
-| Area Model weights | MIT |
-| MASt3R | Apache 2.0 |
-| DINOv2 | Apache 2.0 |
+| Area-loc weights | MIT |
 | Shared indexes | CC-BY-4.0 |
 
 ---

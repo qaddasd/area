@@ -12,5 +12,5 @@ safetensors
 einops
 timm
 matplotlib
-# MASt3R and Dust3r should be cloned separately alongside this repo
-# git clone https://github.com/naver/mast3r.git
+# Area-3R runtime should be placed alongside this repo as 'area_3r_runtime'.
+# Model weights are bundled inside the project (Area-loc.safetensors, Area-3R/).

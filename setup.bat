@@ -43,35 +43,23 @@ python -m pip install --upgrade pip -q
 python -m pip install -r requirements.txt -q
 echo [OK] Dependencies installed
 
-:: Clone MASt3R
+:: Area-3R runtime check
 echo.
-if exist "%AREA_DIR%..\mast3r\mast3r\model.py" (
-    echo [OK] MASt3R already cloned
+if exist "%AREA_DIR%area_3r_runtime" (
+    echo [OK] Area-3R runtime found
 ) else (
-    echo [SETUP] Cloning MASt3R ^(this may take a few minutes^)...
-    cd /d "%AREA_DIR%.."
-    git clone --recursive https://github.com/naver/mast3r.git
-    cd /d "%AREA_DIR%..\mast3r"
-    python -m pip install -r requirements.txt -q
-    python -m pip install -r dust3r\requirements.txt -q
-    cd /d "%AREA_DIR%"
-    echo [OK] MASt3R cloned and dependencies installed
+    echo [INFO] Area-3R runtime not found at area_3r_runtime\
+    echo [INFO] Place the Area-3R runtime there to enable geometric matching.
 )
 
 :: Return to Area directory
 cd /d "%AREA_DIR%"
 
-:: Pre-download MegaLoc weights
+:: Verify bundled model weights (no internet download required)
 echo.
-echo [SETUP] Downloading MegaLoc model weights ^(first time only^)...
-python -c "import torch; model = torch.hub.load('gmberton/MegaLoc', 'get_trained_model'); print('[OK] MegaLoc ready')" 2>nul
-if errorlevel 1 echo [WARN] MegaLoc download failed - will retry on first run
-
-:: Pre-download MASt3R weights
-echo.
-echo [SETUP] Downloading MASt3R model weights ^(~1.2GB, first time only^)...
-python -c "import sys,os; p=os.path.abspath(os.path.join('%AREA_DIR%','..','mast3r')); sys.path.insert(0,p); sys.path.insert(0,os.path.join(p,'dust3r')); from mast3r.model import AsymmetricMASt3R; m=AsymmetricMASt3R.from_pretrained('naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric'); print('[OK] MASt3R ready')" 2>nul
-if errorlevel 1 echo [WARN] MASt3R download failed - will retry on first run
+echo [SETUP] Verifying bundled model weights...
+if exist "%AREA_DIR%Area-loc.safetensors" (echo [OK] Area-loc weights found) else (echo [WARN] Area-loc.safetensors missing)
+if exist "%AREA_DIR%Area-3R\model.safetensors" (echo [OK] Area-3R weights found) else (echo [WARN] Area-3R\model.safetensors missing)
 
 :: Create data dirs
 cd /d "%AREA_DIR%"

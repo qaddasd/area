@@ -43,11 +43,11 @@ print(f"Using device: {device}")
 extractor_lock = threading.Lock()
 
 try:
-    from mast3r_utils import get_mast3r_model, get_mast3r_matches
-    MAST3R_AVAILABLE = True
+    from area_3r_utils import get_area_3r_model, get_area_3r_matches
+    AREA_3R_AVAILABLE = True
 except ImportError:
-    MAST3R_AVAILABLE = False
-    print("[MASt3R] mast3r_utils.py not found. MASt3R matching disabled.")
+    AREA_3R_AVAILABLE = False
+    print("[Area-3R] area_3r_utils.py not found. Area-3R matching disabled.")
 
 
 try:
@@ -57,15 +57,15 @@ except ImportError:
     HUB_AVAILABLE = False
     print("[HUB] area_hub.py not found. Community sharing disabled.")
 
-mast3r_model_instance = None
-mast3r_lock = threading.Lock()
+area_3r_model_instance = None
+area_3r_lock = threading.Lock()
 
-def get_lazy_mast3r():
-    global mast3r_model_instance
-    with mast3r_lock:
-        if mast3r_model_instance is None:
-            mast3r_model_instance = get_mast3r_model()
-    return mast3r_model_instance
+def get_lazy_area_3r():
+    global area_3r_model_instance
+    with area_3r_lock:
+        if area_3r_model_instance is None:
+            area_3r_model_instance = get_area_3r_model()
+    return area_3r_model_instance
 
 
 
@@ -184,7 +184,7 @@ def panoids_from_response(text):
     return filtered
 
 def tiles_info(panoid):
-    image_url = "http://cbk0.google.com/cbk?output=tile&panoid={0:}&zoom=2&x={1:}&y={2:}"
+    image_url = "https://streetviewpixels-pa.googleapis.com/v1/tile?panoid={0:}&x={1:}&y={2:}&zoom=2&cb_client=maps_sv.tactile"
     coord = list(itertools.product(range(IMGX), range(IMGY)))
     tiles = [(x, y, "%s_%dx%d.jpg" % (panoid, x, y), image_url.format(panoid, x, y)) for x, y in coord]
     return tiles
@@ -200,12 +200,31 @@ async def download_tile_aiohttp(session, x, y, fname, url):
             await asyncio.sleep(2)
     return x, y, None
 
+def fetch_single_pano(panoid, width=2048, height=1024):
+    """Fast single-request download of full 360 panorama equirectangular image."""
+    import urllib.request
+    import io
+    url = f"https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid={panoid}&cb_client=maps_sv.tactile&w={width}&h={height}"
+    hdr = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    for _ in range(2):
+        try:
+            req = urllib.request.Request(url, headers=hdr)
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                if resp.status == 200:
+                    data = resp.read()
+                    if len(data) > 5000:
+                        return Image.open(io.BytesIO(data))
+        except Exception:
+            pass
+    return None
+
 def download_tiles(tiles, status_callback=None, max_workers=64):
     total = len(tiles)
     results = {}
     async def main():
         connector = aiohttp.TCPConnector(limit=max_workers)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
             tasks = []
             for i, (x, y, fname, url) in enumerate(tiles):
                 tasks.append(download_tile_aiohttp(session, x, y, fname, url))
@@ -409,14 +428,14 @@ INDEX_TARGET_DIM = 1024
 def build_compact_index():
     """Build compact index from part files + CSV coordinates.
     
-    Auto-applies PCA if descriptors are high-dimensional (e.g., 8448 from MegaLoc).
+    Auto-applies PCA if descriptors are high-dimensional (e.g., 8448 from Area-loc).
     """
     global _compact_cache
     import glob
     os.makedirs(COMPACT_INDEX_DIR, exist_ok=True)
 
-    megaloc_pattern = os.path.join(AREA_PARTS_DIR, "area_part_*.npz")
-    part_files = sorted(glob.glob(megaloc_pattern))
+    area_part_pattern = os.path.join(AREA_PARTS_DIR, "area_part_*.npz")
+    part_files = sorted(glob.glob(area_part_pattern))
     part_files = sorted(set(part_files))
 
     if not part_files:
@@ -463,7 +482,8 @@ def build_compact_index():
         
         pca_matrix = np.vstack(pca_samples)
         del pca_samples
-        print(f"[INDEX] Fitting PCA on {pca_matrix.shape[0]} samples...")
+        final_dim = min(final_dim, pca_matrix.shape[0])
+        print(f"[INDEX] Fitting PCA on {pca_matrix.shape[0]} samples (target {final_dim} dims)...")
         
         from sklearn.decomposition import PCA
         pca = PCA(n_components=final_dim, whiten=True)
@@ -630,7 +650,7 @@ def build_compact_index():
         f.write(f"Raw dim (pre-PCA): {raw_dim}\n")
         f.write(f"Total: {size_d + size_m:.1f} MB\n")
 
-    print(f"\n[INDEX] ✅ Saved compact index:")
+    print(f"\n[INDEX] [OK] Saved compact index:")
     print(f"  Descriptors: {COMPACT_DESCS_PATH} ({size_d:.1f} MB)")
     print(f"  Metadata: {COMPACT_META_PATH} ({size_m:.1f} MB)")
     print(f"  Descriptor dim: {final_dim} (from raw {raw_dim})")
@@ -1227,7 +1247,7 @@ class StreetViewMatcherGUI:
         paned.add(self.map_frame, weight=1)
         self.map_widget = tkintermapview.TkinterMapView(self.map_frame, corner_radius=15)
         self.map_widget.pack(fill="both", expand=True)
-        self.map_widget.set_tile_server("https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png", max_zoom=19)
+        self.map_widget.set_tile_server("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", max_zoom=19)
         self.map_widget.set_position(self.lat_var.get(), self.lon_var.get())
         self.map_widget.set_zoom(15)
 
@@ -1348,8 +1368,9 @@ class StreetViewMatcherGUI:
                 try:
                     total_extracted += len(meta)
 
-                    crops_pil = [tensor_to_pil(c) for c in crops]
-                    cos_descs = batch_extract_area(crops_pil, batch_size=len(crops))
+                    # Direct GPU batch extraction without tensor -> PIL -> tensor conversions
+                    crops_batch_tensor = torch.cat(crops, dim=0)
+                    cos_descs = batch_extract_area(crops_batch_tensor, batch_size=len(crops))
                     area_buffer_descs.append(cos_descs)
                     area_buffer_paths.extend([m['path'] for m in meta])
                     area_buffer_lats.extend([m['lat'] for m in meta])
@@ -1590,7 +1611,7 @@ class StreetViewMatcherGUI:
             self.current_search_context = (query_img_resize, crop_fov, crop_size, center, radius)
 
 
-            q.put(('status', "Extracting query MegaLoc descriptor (multi-scale)..."))
+            q.put(('status', "Extracting query Area-loc descriptor (multi-scale)..."))
             query_for_area = query_img_resize
             desc_original = extract_area_descriptor(query_for_area, apply_pca_reduction=True)
 
@@ -1620,7 +1641,7 @@ class StreetViewMatcherGUI:
 
 
             q.put(('status', "Searching index (original + flipped)..."))
-            K_MEGALOC = 1000
+            K_AREALOC = 1000
             results_original = search_compact_index(query_desc=query_area_desc, center=center, radius_km=radius, top_k=500)
             results_flipped = search_compact_index(query_desc=desc_flipped, center=center, radius_km=radius, top_k=500)
             
@@ -1630,7 +1651,7 @@ class StreetViewMatcherGUI:
                 key = r['panoid']
                 if key not in seen or r['score'] > seen[key]['score']:
                     seen[key] = r
-            compact_results = sorted(seen.values(), key=lambda x: x['score'], reverse=True)[:K_MEGALOC]
+            compact_results = sorted(seen.values(), key=lambda x: x['score'], reverse=True)[:K_AREALOC]
 
             if not compact_results:
                 q.put(('status', "No candidates found in radius."))
@@ -1640,34 +1661,59 @@ class StreetViewMatcherGUI:
                 return
 
             if True:
-                MAST3R_STAGE2_TOP_N = 500
-                candidates_to_check = compact_results[:MAST3R_STAGE2_TOP_N]
-                q.put(('status', f"Stage 2: Running MASt3R directly on top {len(candidates_to_check)} candidates..."))
+                AREA_3R_STAGE2_TOP_N = 120
+                candidates_to_check = compact_results[:AREA_3R_STAGE2_TOP_N]
+                q.put(('status', f"Stage 2: Running Area-3R on top {len(candidates_to_check)} candidates..."))
                 
-                all_mast3r_matches = []
+                all_area_3r_matches = []
                 best = {'inliers': 0, 'panoid': None, 'heading': None, 'lat': None, 'lon': None,
                         'matches': None, 'kp1': None, 'kp2': None, 'emb_path': None}
                 
                 try:
-                    mast3r = get_lazy_mast3r()
-                    if mast3r is not None:
+                    area_3r = get_lazy_area_3r()
+                    if area_3r is not None:
+                        prefetch_queue = queue.Queue(maxsize=16)
+                        def prefetch_panos():
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pf_exec:
+                                def _fetch(m):
+                                    pid = m.get('panoid')
+                                    if not pid: return None
+                                    p_img = fetch_single_pano(pid)
+                                    if p_img is not None:
+                                        return p_img
+                                    try:
+                                        tiles = tiles_info(pid)
+                                        td = download_tiles(tiles, max_workers=16)
+                                        if td:
+                                            p_img = stitch_tiles(td)
+                                            maxw = 2048
+                                            if p_img.size[0] > maxw:
+                                                p_img = p_img.resize((maxw, int(p_img.size[1] * (maxw / p_img.size[0]))), Image.BILINEAR)
+                                            return p_img
+                                    except Exception:
+                                        return None
+                                    return None
+
+                                futs = [pf_exec.submit(_fetch, m) for m in candidates_to_check]
+                                for fut in futs:
+                                    if early_exit_event.is_set():
+                                        break
+                                    prefetch_queue.put(fut.result())
+                            prefetch_queue.put(None)
+
+                        pf_thread = threading.Thread(target=prefetch_panos, daemon=True)
+                        pf_thread.start()
+
                         for i, match in enumerate(candidates_to_check):
                             q.put(('progress', i, len(candidates_to_check)))
-                            q.put(('status', f"MASt3R Match: {i+1}/{len(candidates_to_check)}"))
+                            q.put(('status', f"Area-3R Match: {i+1}/{len(candidates_to_check)}"))
                             pid = match.get('panoid')
                             hdg = match.get('heading')
-                            if not pid or hdg is None: continue
-                            
-                            pano_img = None
-                            try:
-                                tiles = tiles_info(pid)
-                                td = download_tiles(tiles, max_workers=16)
-                                if td:
-                                    pano_img = stitch_tiles(td)
-                                    maxw = 2048
-                                    if pano_img.size[0] > maxw:
-                                        pano_img = pano_img.resize((maxw, int(pano_img.size[1] * (maxw / pano_img.size[0]))), Image.BILINEAR)
-                            except: continue
+                            pano_img = prefetch_queue.get()
+
+                            if not pid or hdg is None or pano_img is None:
+                                if pano_img: pano_img.close()
+                                continue
                             
                             if pano_img:
                                 pano_t = pil_to_tensor(pano_img)
@@ -1677,10 +1723,10 @@ class StreetViewMatcherGUI:
                                     yaw_deg=[hdg], pitch_deg=0, base_dirs=base_dirs_m3)[0].unsqueeze(0)
                                 
                                 crop_pil = tensor_to_pil(crop_t_m3)
-                                m3_matches0, m3_matches1, m3_conf = get_mast3r_matches(query_img_resize, crop_pil, mast3r)
+                                m3_matches0, m3_matches1, m3_conf = get_area_3r_matches(query_img_resize, crop_pil, area_3r)
                                 m3_score = len(m3_matches0)
                                 if m3_score > 50:
-                                    print(f"[Stage 2 MASt3R] Candidate got {m3_score} dense matches")
+                                    print(f"[Stage 2 Area-3R] Candidate got {m3_score} dense matches")
                                 
                                 match_res = {
                                     'inliers': m3_score, 
@@ -1690,7 +1736,7 @@ class StreetViewMatcherGUI:
                                 }
                                 
                                 if m3_score > 50:
-                                    all_mast3r_matches.append(match_res)
+                                    all_area_3r_matches.append(match_res)
                                     q.put(('scan_blip', match.get('lat'), match.get('lon'), m3_score, None))
 
                                 if m3_score > best['inliers']:
@@ -1704,14 +1750,15 @@ class StreetViewMatcherGUI:
                                 if torch.backends.mps.is_available(): torch.mps.empty_cache()
                                 
                                 if best['inliers'] >= 450: # Slightly higher early exit with consensus
-                                    q.put(('status', f"Ultra-Strong MASt3R match! {best['inliers']} points — stopping early"))
+                                    q.put(('status', f"Ultra-Strong Area-3R match! {best['inliers']} points — stopping early"))
+                                    early_exit_event.set()
                                     break
                         
 
-                        if len(all_mast3r_matches) >= 3:
+                        if len(all_area_3r_matches) >= 3:
                             CELL_SIZE = 0.00045 # ~50m
                             cells = defaultdict(list)
-                            for m in all_mast3r_matches:
+                            for m in all_area_3r_matches:
                                 cell = (round(m['lat'] / CELL_SIZE), round(m['lon'] / CELL_SIZE))
                                 cells[cell].append(m)
                             
@@ -1746,7 +1793,7 @@ class StreetViewMatcherGUI:
                              best['all_top_clusters'] = [best]
                             
                 except Exception as e:
-                    print(f"Stage 2 MASt3R error: {e}")
+                    print(f"Stage 2 Area-3R error: {e}")
                 
                 if best['inliers'] > 0:
                     best['inliers'] = 200 + best['inliers'] // 10
@@ -1878,13 +1925,15 @@ class StreetViewMatcherGUI:
                     del cached_tensor
 
             if best_crop is None:
-                tiles = tiles_info(best['panoid'])
-                tiles_data = download_tiles(tiles, max_workers=MAX_DOWNLOAD_WORKERS)
-                try:
-                    pano_img = stitch_tiles(tiles_data)
-                except Exception:
-                    self._set_status("Failed to download visualization.")
-                    return
+                pano_img = fetch_single_pano(best['panoid'])
+                if pano_img is None:
+                    tiles = tiles_info(best['panoid'])
+                    tiles_data = download_tiles(tiles, max_workers=MAX_DOWNLOAD_WORKERS)
+                    try:
+                        pano_img = stitch_tiles(tiles_data)
+                    except Exception:
+                        self._set_status("Failed to download visualization.")
+                        return
                 maxw = 2048
                 if pano_img.size[0] > maxw:
                     pano_img = pano_img.resize((maxw, int(pano_img.size[1] * (maxw / pano_img.size[0]))), Image.BILINEAR)
@@ -2409,8 +2458,8 @@ class StreetViewMatcherGUI:
 
             ("The Search Pipeline", 
              "When you run a search, Area goes through three distinct stages to ensure millimetric accuracy:\n\n"
-             "1. Global Retrieval (MegaLoc): The system extracts a high-level visual signature from your photo and scans the entire city index. It identifies the top 100 most similar locations based on broad visual features.\n\n"
-             "2. Dense Geometric Matching (MASt3R): For the top candidates found in Stage 1, we pull the original panoramas and perform an extremely detailed point-to-point comparison. This stage finds thousands of tiny matching 'patches' between the images to confirm they are the same spot.\n\n"
+             "1. Global Retrieval (Area-loc): The system extracts a high-level visual signature from your photo and scans the entire city index. It identifies the top 100 most similar locations based on broad visual features.\n\n"
+             "2. Dense Geometric Matching (Area-3R): For the top candidates found in Stage 1, we pull the original panoramas and perform an extremely detailed point-to-point comparison. This stage finds thousands of tiny matching 'patches' between the images to confirm they are the same spot.\n\n"
              "3. Spatial Consensus: To prevent errors caused by repetitive architecture (like identical-looking chain stores), candidates are clustered into geographic groups. A location is only confirmed if multiple nearby images also match well, ensuring that isolated false positives are ignored."),
 
             ("Working with City Indexes", 

@@ -1,0 +1,92 @@
+[
+  {
+    "num": 1,
+    "file": "sample_01.jpg",
+    "lat": 43.65857696533203,
+    "lon": 51.16510009765625,
+    "hdg": 180,
+    "pid": "hD5OglOzNNj_KKfaDpsKFg",
+    "gmaps": "https://www.google.com/maps?q=43.658577,51.165100"
+  },
+  {
+    "num": 2,
+    "file": "sample_02.jpg",
+    "lat": 43.65841293334961,
+    "lon": 51.17365264892578,
+    "hdg": 90,
+    "pid": "hyg9Wv6eeK7jfZBqk3jE_Q",
+    "gmaps": "https://www.google.com/maps?q=43.658413,51.173653"
+  },
+  {
+    "num": 3,
+    "file": "sample_03.jpg",
+    "lat": 43.65515899658203,
+    "lon": 51.185935974121094,
+    "hdg": 270,
+    "pid": "u7Las_6VZALoTfCQg0RFYQ",
+    "gmaps": "https://www.google.com/maps?q=43.655159,51.185936"
+  },
+  {
+    "num": 4,
+    "file": "sample_04.jpg",
+    "lat": 43.6494255065918,
+    "lon": 51.17028045654297,
+    "hdg": 180,
+    "pid": "FUS5aN7q06Ds1CQ3PTmulw",
+    "gmaps": "https://www.google.com/maps?q=43.649426,51.170280"
+  },
+  {
+    "num": 5,
+    "file": "sample_05.jpg",
+    "lat": 43.6486930847168,
+    "lon": 51.15391159057617,
+    "hdg": 180,
+    "pid": "XCgskFM9k6FbFEccj9w0UQ",
+    "gmaps": "https://www.google.com/maps?q=43.648693,51.153912"
+  },
+  {
+    "num": 6,
+    "file": "sample_06.jpg",
+    "lat": 43.64549255371094,
+    "lon": 51.15932846069336,
+    "hdg": 270,
+    "pid": "nV6ahbDzVC2fl1RiPjwQOw",
+    "gmaps": "https://www.google.com/maps?q=43.645493,51.159328"
+  },
+  {
+    "num": 7,
+    "file": "sample_07.jpg",
+    "lat": 43.644832611083984,
+    "lon": 51.16999435424805,
+    "hdg": 0,
+    "pid": "_Q5DkDXx3g1O-Y5-w_Cqmg",
+    "gmaps": "https://www.google.com/maps?q=43.644833,51.169994"
+  },
+  {
+    "num": 8,
+    "file": "sample_08.jpg",
+    "lat": 43.641658782958984,
+    "lon": 51.16221237182617,
+    "hdg": 180,
+    "pid": "rmbDnl36cAa_kx5NcjYHqg",
+    "gmaps": "https://www.google.com/maps?q=43.641659,51.162212"
+  },
+  {
+    "num": 9,
+    "file": "sample_09.jpg",
+    "lat": 43.64267349243164,
+    "lon": 51.1599006652832,
+    "hdg": 180,
+    "pid": "dp4i-LGmCZ4VfZcq_lD8Ew",
+    "gmaps": "https://www.google.com/maps?q=43.642673,51.159901"
+  },
+  {
+    "num": 10,
+    "file": "sample_10.jpg",
+    "lat": 43.63914108276367,
+    "lon": 51.16410827636719,
+    "hdg": 180,
+    "pid": "-_zXlSaWZwJJqaVynjqmnQ",
+    "gmaps": "https://www.google.com/maps?q=43.639141,51.164108"
+  }
+]

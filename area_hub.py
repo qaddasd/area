@@ -62,14 +62,8 @@ def create_bundle(index_dir, output_path, name, description, center_lat, center_
     """
 
     descs_path = os.path.join(index_dir, "area_descriptors.npy")
-    if not os.path.exists(descs_path):
-        descs_path = os.path.join(index_dir, "megaloc_descriptors.npy")
-    if not os.path.exists(descs_path):
-        descs_path = os.path.join(index_dir, "cosplace_descriptors.npy")
     meta_path = os.path.join(index_dir, "metadata.npz")
     pca_path = os.path.join(index_dir, "area_pca.pkl")
-    if not os.path.exists(pca_path):
-        pca_path = os.path.join(index_dir, "megaloc_pca.pkl")
     info_path = os.path.join(index_dir, "index_info.txt")
 
     if not os.path.exists(descs_path):
@@ -125,7 +119,7 @@ def create_bundle(index_dir, output_path, name, description, center_lat, center_
         "num_panoids": int(num_panoids),
         "descriptor_dim": int(desc_dim),
         "raw_descriptor_dim": 8448,
-        "descriptor_model": "Area",
+        "descriptor_model": "Area-loc",
         "pca_components": int(desc_dim),
         "heading_step_deg": int(heading_step),
         "crop_fov_deg": int(crop_fov),
@@ -293,12 +287,8 @@ class AreaHub:
         try:
 
             datasets_global = list(self.api.list_datasets(search="area-geolocation"))
-            
-            # Also search for legacy netryx indexes just in case
-            try:
-                datasets_legacy = list(self.api.list_datasets(search="netryx"))
-            except:
-                datasets_legacy = []
+
+            datasets_legacy = []
 
             datasets_mine = []
             try:
@@ -437,7 +427,7 @@ class AreaHub:
             try:
                 bundle_path = hf_hub_download(
                     repo_id=repo_id,
-                    filename="index.netryx",
+                    filename="index.area",
                     repo_type="dataset",
                 )
             except Exception as e:
@@ -452,8 +442,6 @@ class AreaHub:
 
 
         pca_path = os.path.join(output_dir, "area_pca.pkl")
-        if not os.path.exists(pca_path):
-            pca_path = os.path.join(output_dir, "megaloc_pca.pkl")
         if os.path.exists(pca_path):
             try:
                 from area_utils import load_pca
